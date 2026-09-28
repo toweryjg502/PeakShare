@@ -139,7 +139,7 @@ Database, payment, and email settings will move to environment variables as Neon
 
 | Name | Role |
 |---|---|
-| **Jared Towery** | Project Manager and Lead Developer |
+| **Jared Towery** | Project Manager |
 | **Max Phillips** | Developer |
 
 Appalachian State University, Walker College of Business
