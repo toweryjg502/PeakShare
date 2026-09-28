@@ -17,7 +17,7 @@
 ---
 
 > [!NOTE]
-> PeakShare is under active development as our Information Systems senior project at Appalachian State University (Fall 2026). See the [Roadmap](#roadmap) for current progress.
+> PeakShare is under active development as our Information Systems senior capstone project at Appalachian State University (Fall 2026). See the [Roadmap](#roadmap) for current progress.
 
 ## The Problem
 
@@ -90,9 +90,6 @@ To avoid an empty marketplace at launch, we plan to seed 30+ listings by partner
 
 ## Getting Started
 
-> [!IMPORTANT]
-> These steps use standard Django conventions. Adjust them to match this repository's actual structure.
-
 ```bash
 # Clone the repository
 git clone https://github.com/toweryjg502/PeakShare.git
@@ -137,11 +134,11 @@ You will also need environment variables for your Neon database connection, Stri
 
 | Name | Role |
 |---|---|
-| **Jared Towery** | Project Manager and Lead Developer |
+| **Jared Towery** | Project Manager |
 | **Max Phillips** | Developer |
 
 Appalachian State University, Walker College of Business
 
 ---
 
-<sub>PeakShare is a student project and is not officially affiliated with or endorsed by Appalachian State University. Before any public release, the terms of service and liability waiver should be reviewed by qualified legal counsel.</sub>
+<sub>PeakShare is a student project and is not officially affiliated with or endorsed by Appalachian State University. Terms of service and liability waiver language will be reviewed with legal counsel before any public release.</sub>
