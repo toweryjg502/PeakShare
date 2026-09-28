@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PeakShare - Student Sign Up</title>
+</head>
+<body>
+    <h2>Campus Sign Up</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Create Account</button>
+    </form>
+    <p>Already have an account? <a href="{% url 'login' %}">Log in here</a>.</p>
+</body>
+</html>

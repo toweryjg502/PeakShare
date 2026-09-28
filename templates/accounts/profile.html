@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PeakShare - Student Profile</title>
+</head>
+<body>
+    <h2>Welcome, {{ user.first_name|default:user.username }}!</h2>
+    <p><strong>Email:</strong> {{ user.email }}</p>
+    <p><strong>Campus Status:</strong> 
+        {% if user.is_verified %}
+            <span style="color: green;">Verified Student</span>
+        {% else %}
+            <span style="color: red;">Unverified</span>
+        {% endif %}
+    </p>
+    <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit">Log Out</button>
+    </form>
+</body>
+</html>
