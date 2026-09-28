@@ -62,10 +62,11 @@ We are building a focused MVP first and adding secondary features only after the
 **Done**
 - [x] Custom user model
 - [x] Registration, login, logout, and profile pages
-- [x] `.edu` email format check on registration
+- [x] Registration restricted to `@appstate.edu` emails
+- [x] Automated tests for registration
 
 **MVP core (in progress)**
-- [ ] Restrict registration to `appstate.edu` and add single-use email verification
+- [ ] Single-use email verification
 - [ ] Connect Neon PostgreSQL
 - [ ] Item listings by category
 - [ ] Calendar-based booking
@@ -104,8 +105,8 @@ cd PeakShare
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 
-# Install Django
-pip install django
+# Install dependencies
+pip install -r requirements.txt
 
 # Set up the database (SQLite for now)
 python manage.py migrate
