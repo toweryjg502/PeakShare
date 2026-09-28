@@ -17,7 +17,7 @@
 ---
 
 > [!NOTE]
-> PeakShare is under active development as our Information Systems senior capstone project at Appalachian State University (Fall 2026). See the [Roadmap](#roadmap) for current progress.
+> PeakShare is under active development as our Information Systems senior project at Appalachian State University (Fall 2026). See the [Roadmap](#roadmap) for current progress.
 
 ## The Problem
 
