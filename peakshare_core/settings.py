@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     
     # Local Apps
     'accounts',
+    'listings',
 ]
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
@@ -128,3 +129,6 @@ STATIC_URL = 'static/'
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'PeakShare <noreply@peakshare.example>'
+
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
