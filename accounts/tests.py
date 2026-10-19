@@ -6,6 +6,12 @@ from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
+from django.http import HttpResponse
+from django.test import override_settings
+from django.urls import include, path
+
+from .decorators import verified_required
+
 from .forms import StudentRegistrationForm
 from .models import CustomUser
 from .tokens import email_verification_token
@@ -208,3 +214,47 @@ class ResendVerificationTests(TestCase):
         self.client.force_login(self.user)
         self.client.post(reverse('resend_verification'))
         self.assertEqual(len(mail.outbox), 0)
+
+        # ---------- verified_required decorator ----------
+
+@verified_required
+def _protected_view(request):
+    return HttpResponse('secret')
+
+
+urlpatterns = [
+    path('accounts/', include('accounts.urls')),
+    path('verified-only/', _protected_view),
+]
+
+
+@override_settings(ROOT_URLCONF=__name__)
+class VerifiedRequiredTests(TestCase):
+    def test_anonymous_redirected_to_login(self):
+        response = self.client.get('/verified-only/')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_unverified_user_redirected_to_profile_with_message(self):
+        user = make_user()
+        self.client.force_login(user)
+        response = self.client.get('/verified-only/', follow=True)
+        self.assertRedirects(response, reverse('profile'))
+        self.assertIn(
+            'Please verify your @appstate.edu email before doing that.',
+            message_texts(response),
+        )
+
+    def test_verified_user_gets_through(self):
+        user = make_user(is_verified=True)
+        self.client.force_login(user)
+        response = self.client.get('/verified-only/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'secret')
+
+    def test_verifying_unlocks_access(self):
+        user = make_user()
+        self.client.force_login(user)
+        self.assertEqual(self.client.get('/verified-only/').status_code, 302)
+        self.client.get(verification_path(user))
+        self.assertEqual(self.client.get('/verified-only/').status_code, 200)
