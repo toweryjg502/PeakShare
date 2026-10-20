@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PeakShare - Browse Gear</title>
+</head>
+<body>
+    <h2>Browse Gear</h2>
+
+    <p>
+        {% if user.is_authenticated %}
+            <a href="{% url 'profile' %}">My profile</a>
+        {% else %}
+            <a href="{% url 'login' %}">Log in</a> |
+            <a href="{% url 'register' %}">Sign up</a>
+        {% endif %}
+    </p>
+
+    <p>
+        <strong>Category:</strong>
+        <a href="{% url 'item_list' %}">All</a>
+        {% for category in categories %}
+            | <a href="{% url 'item_list' %}?category={{ category.slug }}">{{ category.name }}</a>
+        {% endfor %}
+    </p>
+
+    {% if selected_category %}
+        <p>Showing: {{ selected_category.name }}</p>
+    {% endif %}
+
+    {% for item in items %}
+        <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+            {% with photo=item.photos.all.0 %}
+                {% if photo %}
+                    <img src="{{ photo.image.url }}" alt="{{ item.title }}" width="150">
+                {% endif %}
+            {% endwith %}
+            <h3><a href="{% url 'item_detail' item.pk %}">{{ item.title }}</a></h3>
+            <p>${{ item.daily_price }}/day &middot; {{ item.category.name }} &middot; {{ item.get_condition_display }}</p>
+        </div>
+    {% empty %}
+        <p>No listings yet.</p>
+    {% endfor %}
+</body>
+</html>

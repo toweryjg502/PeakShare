@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PeakShare - {{ item.title }}</title>
+</head>
+<body>
+    <p><a href="{% url 'item_list' %}">&larr; Back to browse</a></p>
+
+    <h2>{{ item.title }}</h2>
+    {% if not item.is_active %}
+        <p style="color: red;">This listing is hidden from other users.</p>
+    {% endif %}
+
+    {% for photo in item.photos.all %}
+        <img src="{{ photo.image.url }}" alt="{{ item.title }}" width="300">
+    {% endfor %}
+
+    <p><strong>${{ item.daily_price }}/day</strong></p>
+    <p><strong>Category:</strong> {{ item.category.name }}</p>
+    <p><strong>Condition:</strong> {{ item.get_condition_display }}</p>
+    <p><strong>Lender:</strong> {{ item.owner.first_name|default:item.owner.username }}</p>
+
+    <h3>Description</h3>
+    <p>{{ item.description|linebreaksbr }}</p>
+
+    {% if item.pickup_instructions %}
+        <h3>Pickup and drop-off</h3>
+        <p>{{ item.pickup_instructions|linebreaksbr }}</p>
+    {% endif %}
+</body>
+</html>
