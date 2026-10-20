@@ -1,8 +1,11 @@
+from django.db import transaction
 from django.http import Http404
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 
-from .models import Category, Item
+from accounts.decorators import verified_required
 
+from .forms import ItemForm
+from .models import Category, Item, ItemPhoto
 
 def item_list(request):
     items = (
@@ -31,3 +34,19 @@ def item_detail(request, pk):
     if not item.is_active and item.owner != request.user:
         raise Http404
     return render(request, 'listings/item_detail.html', {'item': item})
+
+@verified_required
+def item_create(request):
+    if request.method == 'POST':
+        form = ItemForm(request.POST, request.FILES)
+        if form.is_valid():
+            with transaction.atomic():
+                item = form.save(commit=False)
+                item.owner = request.user
+                item.save()
+                for image in form.cleaned_data['photos']:
+                    ItemPhoto.objects.create(item=item, image=image)
+            return redirect('item_detail', pk=item.pk)
+    else:
+        form = ItemForm()
+    return render(request, 'listings/item_form.html', {'form': form})

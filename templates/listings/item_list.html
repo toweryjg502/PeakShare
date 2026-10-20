@@ -7,8 +7,9 @@
     <h2>Browse Gear</h2>
 
     <p>
-        {% if user.is_authenticated %}
-            <a href="{% url 'profile' %}">My profile</a>
+                {% if user.is_authenticated %}
+            <a href="{% url 'profile' %}">My profile</a> |
+            <a href="{% url 'item_create' %}">List an item</a>
         {% else %}
             <a href="{% url 'login' %}">Log in</a> |
             <a href="{% url 'register' %}">Sign up</a>
