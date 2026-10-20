@@ -12,6 +12,7 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
     path('listings/', include('listings.urls')),
     path('', RedirectView.as_view(pattern_name='item_list', permanent=False)),
+    path('bookings/', include('bookings.urls')),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

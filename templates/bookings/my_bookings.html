@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PeakShare - My Bookings</title>
+</head>
+<body>
+    <p><a href="{% url 'item_list' %}">&larr; Back to browse</a></p>
+    <h2>My Bookings</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <h3>Requests for my gear</h3>
+    {% for b in incoming %}
+        <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+            <p>
+                <a href="{% url 'item_detail' b.item.pk %}">{{ b.item.title }}</a>
+                requested by {{ b.renter.first_name|default:b.renter.username }}
+            </p>
+            <p>{{ b.start_date }} to {{ b.end_date }}
+               ({{ b.days }} day{{ b.days|pluralize }}) &middot; ${{ b.total_price }}</p>
+            <p>Status: {{ b.get_status_display }}</p>
+            {% if b.status == 'pending' %}
+                <form method="post" action="{% url 'booking_action' b.pk 'approve' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit">Approve</button>
+                </form>
+                <form method="post" action="{% url 'booking_action' b.pk 'decline' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit">Decline</button>
+                </form>
+            {% elif b.status == 'approved' %}
+                <form method="post" action="{% url 'booking_action' b.pk 'cancel' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit">Cancel booking</button>
+                </form>
+            {% endif %}
+        </div>
+    {% empty %}
+        <p>No requests yet.</p>
+    {% endfor %}
+
+    <h3>My rental requests</h3>
+    {% for b in my_requests %}
+        <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+            <p><a href="{% url 'item_detail' b.item.pk %}">{{ b.item.title }}</a></p>
+            <p>{{ b.start_date }} to {{ b.end_date }}
+               ({{ b.days }} day{{ b.days|pluralize }}) &middot; ${{ b.total_price }}</p>
+            <p>Status: {{ b.get_status_display }}</p>
+            {% if b.status == 'pending' or b.status == 'approved' %}
+                <form method="post" action="{% url 'booking_action' b.pk 'cancel' %}">
+                    {% csrf_token %}
+                    <button type="submit">Cancel</button>
+                </form>
+            {% endif %}
+        </div>
+    {% empty %}
+        <p>You haven't requested anything yet.</p>
+    {% endfor %}
+</body>
+</html>

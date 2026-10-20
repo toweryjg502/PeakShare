@@ -26,7 +26,14 @@
             </form>
         </div>
     {% endif %}
-
+    
+    {% if user.is_authenticated %}
+        {% if user != item.owner and item.is_active %}
+            <p><a href="{% url 'booking_request' item.pk %}">Request to book</a></p>
+        {% endif %}
+    {% else %}
+        <p><a href="{% url 'login' %}?next={{ request.path }}">Log in to request this item</a></p>
+    {% endif %}
     {% for photo in item.photos.all %}
         <img src="{{ photo.image.url }}" alt="{{ item.title }}" width="300">
     {% endfor %}
