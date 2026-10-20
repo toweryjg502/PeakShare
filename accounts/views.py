@@ -11,11 +11,14 @@ from django.views.decorators.http import require_POST
 from .forms import StudentRegistrationForm
 from .tokens import email_verification_token
 
+from django.conf import settings
 
 def send_verification_email(request, user):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = email_verification_token.make_token(user)
     link = request.build_absolute_uri(reverse('verify_email', args=[uid, token]))
+    if settings.DEBUG:
+        print(f"\nVERIFICATION LINK: {link}\n")
     send_mail(
         subject="Verify your PeakShare account",
         message=(
