@@ -6,9 +6,25 @@
 <body>
     <p><a href="{% url 'item_list' %}">&larr; Back to browse</a></p>
 
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
     <h2>{{ item.title }}</h2>
     {% if not item.is_active %}
         <p style="color: red;">This listing is hidden from other users.</p>
+    {% endif %}
+
+    {% if user == item.owner %}
+        <div>
+            <a href="{% url 'item_edit' item.pk %}">Edit listing</a>
+            <form method="post" action="{% url 'item_toggle_active' item.pk %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit">{% if item.is_active %}Hide listing{% else %}Show listing{% endif %}</button>
+            </form>
+        </div>
     {% endif %}
 
     {% for photo in item.photos.all %}

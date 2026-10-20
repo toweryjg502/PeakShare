@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>PeakShare - List an Item</title>
+    <title>PeakShare - {{ heading|default:"List an Item" }}</title>
 </head>
 <body>
     <p><a href="{% url 'item_list' %}">&larr; Back to browse</a></p>
-    <h2>List an Item</h2>
+    <h2>{{ heading|default:"List an Item" }}</h2>
 
     {% if messages %}
         {% for message in messages %}
@@ -16,7 +16,7 @@
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit">Create Listing</button>
+        <button type="submit">{{ submit_label|default:"Create Listing" }}</button>
     </form>
 </body>
 </html>
