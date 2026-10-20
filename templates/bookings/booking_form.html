@@ -1,18 +1,16 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>PeakShare - Request {{ item.title }}</title>
-</head>
-<body>
-    <p><a href="{% url 'item_detail' item.pk %}">&larr; Back to listing</a></p>
-    <h2>Request: {{ item.title }}</h2>
-    <p>${{ item.daily_price }}/day. Dates are inclusive, up to {{ max_days }} days.
-       The lender must approve your request. No payment is taken yet.</p>
+{% extends 'base.html' %}
+{% block title %}Request {{ item.title }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'item_detail' item.pk %}">&larr; Back to listing</a></p>
 
+<div class="card form-card">
+    <h1>Request: {{ item.title }}</h1>
+    <p class="muted">${{ item.daily_price }}/day. Dates are inclusive, up to {{ max_days }} days.
+       The lender must approve your request. No payment is taken yet.</p>
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit">Send Request</button>
     </form>
-</body>
-</html>
+</div>
+{% endblock %}

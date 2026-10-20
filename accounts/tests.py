@@ -224,6 +224,8 @@ def _protected_view(request):
 
 urlpatterns = [
     path('accounts/', include('accounts.urls')),
+    path('listings/', include('listings.urls')),
+    path('bookings/', include('bookings.urls')),
     path('verified-only/', _protected_view),
 ]
 

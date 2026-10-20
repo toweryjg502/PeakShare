@@ -1,23 +1,15 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>PeakShare - Student Profile</title>
-</head>
-<body>
-    <h2>Welcome, {{ user.first_name|default:user.username }}!</h2>
+{% extends 'base.html' %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<h1>Welcome, {{ user.first_name|default:user.username }}!</h1>
 
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
-
+<div class="card">
     <p><strong>Email:</strong> {{ user.email }}</p>
     <p><strong>Campus Status:</strong>
         {% if user.is_verified %}
-            <span style="color: green;">Verified Student</span>
+            <span class="badge good">Verified Student</span>
         {% else %}
-            <span style="color: red;">Unverified</span>
+            <span class="badge bad">Unverified</span>
         {% endif %}
     </p>
 
@@ -27,10 +19,5 @@
             <button type="submit">Resend verification email</button>
         </form>
     {% endif %}
-
-    <form method="post" action="{% url 'logout' %}">
-        {% csrf_token %}
-        <button type="submit">Log Out</button>
-    </form>
-</body>
-</html>
+</div>
+{% endblock %}

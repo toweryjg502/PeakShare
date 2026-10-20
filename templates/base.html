@@ -1,0 +1,46 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>{% block title %}PeakShare{% endblock %} | PeakShare</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <script src="{% static 'js/theme.js' %}"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="inner">
+            <a class="brand" href="{% url 'item_list' %}">PeakShare</a>
+            <nav>
+                <a href="{% url 'item_list' %}">Browse</a>
+                {% if user.is_authenticated %}
+                    <a href="{% url 'my_bookings' %}">My bookings</a>
+                    <a href="{% url 'item_create' %}">List an item</a>
+                    <a href="{% url 'profile' %}">Profile</a>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="secondary">Log out</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}">Log in</a>
+                    <a href="{% url 'register' %}">Sign up</a>
+                {% endif %}
+                <button type="button" id="theme-toggle" class="secondary" aria-label="Switch between light and dark mode">&#9680; Theme</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="message {{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

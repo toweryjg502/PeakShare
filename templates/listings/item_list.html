@@ -1,46 +1,36 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>PeakShare - Browse Gear</title>
-</head>
-<body>
-    <h2>Browse Gear</h2>
+{% extends 'base.html' %}
+{% block title %}Browse Gear{% endblock %}
+{% block content %}
+<h1>Browse Gear</h1>
 
-       <p>
-        {% if user.is_authenticated %}
-            <a href="{% url 'profile' %}">My profile</a> |
-            <a href="{% url 'my_bookings' %}">My bookings</a> |
-            <a href="{% url 'item_create' %}">List an item</a>
-        {% else %}
-            <a href="{% url 'login' %}">Log in</a> |
-            <a href="{% url 'register' %}">Sign up</a>
-        {% endif %}
-    </p>
+<div class="pills">
+    <a href="{% url 'item_list' %}" class="{% if not selected_category %}active{% endif %}">All</a>
+    {% for category in categories %}
+        <a href="{% url 'item_list' %}?category={{ category.slug }}"
+           class="{% if selected_category == category %}active{% endif %}">{{ category.name }}</a>
+    {% endfor %}
+</div>
 
-    <p>
-        <strong>Category:</strong>
-        <a href="{% url 'item_list' %}">All</a>
-        {% for category in categories %}
-            | <a href="{% url 'item_list' %}?category={{ category.slug }}">{{ category.name }}</a>
-        {% endfor %}
-    </p>
-
-    {% if selected_category %}
-        <p>Showing: {{ selected_category.name }}</p>
-    {% endif %}
-
+<div class="grid">
     {% for item in items %}
-        <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+        <div class="card">
             {% with photo=item.photos.all.0 %}
                 {% if photo %}
-                    <img src="{{ photo.image.url }}" alt="{{ item.title }}" width="150">
+                    <img class="card-photo" src="{{ photo.image.url }}" alt="{{ item.title }}">
+                {% else %}
+                    <div class="card-photo empty">No photo</div>
                 {% endif %}
             {% endwith %}
-            <h3><a href="{% url 'item_detail' item.pk %}">{{ item.title }}</a></h3>
-            <p>${{ item.daily_price }}/day &middot; {{ item.category.name }} &middot; {{ item.get_condition_display }}</p>
+            <div class="card-body">
+                <h3><a href="{% url 'item_detail' item.pk %}">{{ item.title }}</a></h3>
+                <p class="price">${{ item.daily_price }}/day</p>
+                <p class="muted">{{ item.category.name }} &middot; {{ item.get_condition_display }}</p>
+            </div>
         </div>
-    {% empty %}
-        <p>No listings yet.</p>
     {% endfor %}
-</body>
-</html>
+</div>
+
+{% if not items %}
+    <p class="muted">No listings yet.</p>
+{% endif %}
+{% endblock %}

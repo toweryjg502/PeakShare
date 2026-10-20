@@ -1,37 +1,29 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>PeakShare - Availability for {{ item.title }}</title>
-</head>
-<body>
-    <p><a href="{% url 'item_detail' item.pk %}">&larr; Back to listing</a></p>
-    <h2>Availability: {{ item.title }}</h2>
+{% extends 'base.html' %}
+{% block title %}Availability for {{ item.title }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'item_detail' item.pk %}">&larr; Back to listing</a></p>
+<h1>Availability: {{ item.title }}</h1>
 
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
-
-    <h3>Block dates</h3>
-    <p>Renters can't request blocked dates. Dates are inclusive.</p>
+<div class="card form-card">
+    <h2>Block dates</h2>
+    <p class="muted">Renters can't request blocked dates. Dates are inclusive.</p>
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit">Block These Dates</button>
     </form>
+</div>
 
-    <h3>Upcoming blocked dates</h3>
-    {% for b in blackouts %}
-        <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
-            <p>{{ b.start_date }} to {{ b.end_date }}{% if b.reason %} &middot; {{ b.reason }}{% endif %}</p>
-            <form method="post" action="{% url 'blackout_delete' b.pk %}">
-                {% csrf_token %}
-                <button type="submit">Remove</button>
-            </form>
-        </div>
-    {% empty %}
-        <p>No dates blocked.</p>
-    {% endfor %}
-</body>
-</html>
+<h2>Upcoming blocked dates</h2>
+{% for b in blackouts %}
+    <div class="card">
+        <p>{{ b.start_date }} to {{ b.end_date }}{% if b.reason %} &middot; {{ b.reason }}{% endif %}</p>
+        <form method="post" action="{% url 'blackout_delete' b.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="secondary">Remove</button>
+        </form>
+    </div>
+{% empty %}
+    <p class="muted">No dates blocked.</p>
+{% endfor %}
+{% endblock %}

@@ -1,15 +1,13 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>PeakShare - Student Sign Up</title>
-</head>
-<body>
-    <h2>Campus Sign Up</h2>
+{% extends 'base.html' %}
+{% block title %}Sign up{% endblock %}
+{% block content %}
+<div class="card form-card">
+    <h1>Campus Sign Up</h1>
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit">Create Account</button>
     </form>
-    <p>Already have an account? <a href="{% url 'login' %}">Log in here</a>.</p>
-</body>
-</html>
+    <p class="muted">Already have an account? <a href="{% url 'login' %}">Log in here</a>.</p>
+</div>
+{% endblock %}

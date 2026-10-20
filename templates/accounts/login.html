@@ -1,22 +1,13 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>PeakShare - Student Login</title>
-</head>
-<body>
-    <h2>Student Login</h2>
-
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
-
+{% extends 'base.html' %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<div class="card form-card">
+    <h1>Student Login</h1>
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit">Log In</button>
     </form>
-    <p>Need an account? <a href="{% url 'register' %}">Sign up here</a>.</p>
-</body>
-</html>
+    <p class="muted">Need an account? <a href="{% url 'register' %}">Sign up here</a>.</p>
+</div>
+{% endblock %}

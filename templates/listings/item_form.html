@@ -1,22 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>PeakShare - {{ heading|default:"List an Item" }}</title>
-</head>
-<body>
-    <p><a href="{% url 'item_list' %}">&larr; Back to browse</a></p>
-    <h2>{{ heading|default:"List an Item" }}</h2>
+{% extends 'base.html' %}
+{% block title %}{{ heading|default:"List an Item" }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'item_list' %}">&larr; Back to browse</a></p>
 
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
-
+<div class="card form-card">
+    <h1>{{ heading|default:"List an Item" }}</h1>
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit">{{ submit_label|default:"Create Listing" }}</button>
     </form>
-</body>
-</html>
+</div>
+{% endblock %}

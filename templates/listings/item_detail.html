@@ -1,56 +1,59 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>PeakShare - {{ item.title }}</title>
-</head>
-<body>
-    <p><a href="{% url 'item_list' %}">&larr; Back to browse</a></p>
+{% extends 'base.html' %}
+{% block title %}{{ item.title }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'item_list' %}">&larr; Back to browse</a></p>
 
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+<h1>{{ item.title }}</h1>
+{% if not item.is_active %}
+    <p><span class="badge bad">This listing is hidden from other users.</span></p>
+{% endif %}
 
-    <h2>{{ item.title }}</h2>
-    {% if not item.is_active %}
-        <p style="color: red;">This listing is hidden from other users.</p>
-    {% endif %}
+{% if user == item.owner %}
+    <div class="actions">
+        <a class="button secondary" href="{% url 'item_edit' item.pk %}">Edit listing</a>
+        <a class="button secondary" href="{% url 'blackout_manage' item.pk %}">Manage availability</a>
+        <form method="post" action="{% url 'item_toggle_active' item.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="secondary">{% if item.is_active %}Hide listing{% else %}Show listing{% endif %}</button>
+        </form>
+    </div>
+{% endif %}
 
-    {% if user == item.owner %}
-        <div>
-            <a href="{% url 'item_edit' item.pk %}">Edit listing</a> |
-            <a href="{% url 'blackout_manage' item.pk %}">Manage availability</a>
-            <form method="post" action="{% url 'item_toggle_active' item.pk %}" style="display: inline;">
-                {% csrf_token %}
-                <button type="submit">{% if item.is_active %}Hide listing{% else %}Show listing{% endif %}</button>
-            </form>
+{% if user.is_authenticated %}
+    {% if user != item.owner and item.is_active %}
+        <div class="actions">
+            <a class="button" href="{% url 'booking_request' item.pk %}">Request to book</a>
         </div>
     {% endif %}
-    
-    {% if user.is_authenticated %}
-        {% if user != item.owner and item.is_active %}
-            <p><a href="{% url 'booking_request' item.pk %}">Request to book</a></p>
-        {% endif %}
-    {% else %}
-        <p><a href="{% url 'login' %}?next={{ request.path }}">Log in to request this item</a></p>
-    {% endif %}
-    {% for photo in item.photos.all %}
-        <img src="{{ photo.image.url }}" alt="{{ item.title }}" width="300">
-    {% endfor %}
+{% else %}
+    <div class="actions">
+        <a class="button" href="{% url 'login' %}?next={{ request.path }}">Log in to request this item</a>
+    </div>
+{% endif %}
 
-    <p><strong>${{ item.daily_price }}/day</strong></p>
+<div class="gallery">
+    {% for photo in item.photos.all %}
+        <img src="{{ photo.image.url }}" alt="{{ item.title }}">
+    {% endfor %}
+</div>
+
+<div class="card meta">
+    <p class="price">${{ item.daily_price }}/day</p>
     <p><strong>Category:</strong> {{ item.category.name }}</p>
     <p><strong>Condition:</strong> {{ item.get_condition_display }}</p>
     <p><strong>Lender:</strong> {{ item.owner.first_name|default:item.owner.username }}</p>
+</div>
 
+<div class="card">
     <h3>Unavailable dates</h3>
     {% for r in unavailable %}
         <p>{{ r.start }} to {{ r.end }} &middot; {% if r.kind == 'booked' %}Booked{% else %}Lender unavailable{% endif %}</p>
     {% empty %}
-        <p>No upcoming dates are blocked.</p>
+        <p class="muted">No upcoming dates are blocked.</p>
     {% endfor %}
+</div>
 
+<div class="card">
     <h3>Description</h3>
     <p>{{ item.description|linebreaksbr }}</p>
 
@@ -58,5 +61,5 @@
         <h3>Pickup and drop-off</h3>
         <p>{{ item.pickup_instructions|linebreaksbr }}</p>
     {% endif %}
-</body>
-</html>
+</div>
+{% endblock %}
