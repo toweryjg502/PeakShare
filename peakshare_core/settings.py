@@ -15,6 +15,8 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
+import dj_database_url
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
@@ -80,12 +82,14 @@ WSGI_APPLICATION = 'peakshare_core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.parse(
+            os.environ['DATABASE_URL'], conn_max_age=600
+        )
     }
-}
+    # Don't hold connections open while tests run, or cleanup can't drop the test DB
+    DATABASES['default']['TEST'] = {'NAME': 'test_neondb'}
 
 
 # Password validation
@@ -134,3 +138,8 @@ DEFAULT_FROM_EMAIL = 'PeakShare <noreply@peakshare.example>'
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+import sys
+
+if 'test' in sys.argv:
+    DATABASES['default']['CONN_MAX_AGE'] = 0
