@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PeakShare - Availability for {{ item.title }}</title>
+</head>
+<body>
+    <p><a href="{% url 'item_detail' item.pk %}">&larr; Back to listing</a></p>
+    <h2>Availability: {{ item.title }}</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <h3>Block dates</h3>
+    <p>Renters can't request blocked dates. Dates are inclusive.</p>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Block These Dates</button>
+    </form>
+
+    <h3>Upcoming blocked dates</h3>
+    {% for b in blackouts %}
+        <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+            <p>{{ b.start_date }} to {{ b.end_date }}{% if b.reason %} &middot; {{ b.reason }}{% endif %}</p>
+            <form method="post" action="{% url 'blackout_delete' b.pk %}">
+                {% csrf_token %}
+                <button type="submit">Remove</button>
+            </form>
+        </div>
+    {% empty %}
+        <p>No dates blocked.</p>
+    {% endfor %}
+</body>
+</html>

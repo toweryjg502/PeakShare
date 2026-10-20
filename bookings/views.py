@@ -2,15 +2,15 @@ from django.contrib import messages
 from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import verified_required
 from listings.models import Item
 
 from .availability import is_available
-from .forms import BookingRequestForm
-from .models import Booking
-
+from .forms import BlackoutDateForm, BookingRequestForm
+from .models import BlackoutDate, Booking
 
 @verified_required
 def booking_request(request, item_pk):
@@ -101,3 +101,36 @@ def booking_action(request, pk, action):
                 messages.success(request, 'Booking cancelled.')
 
     return redirect('my_bookings')
+
+@verified_required
+def blackout_manage(request, item_pk):
+    # Filtering by owner means other users get a 404
+    item = get_object_or_404(Item, pk=item_pk, owner=request.user)
+    if request.method == 'POST':
+        form = BlackoutDateForm(request.POST, item=item)
+        if form.is_valid():
+            blackout = form.save(commit=False)
+            blackout.item = item
+            blackout.save()
+            messages.success(request, 'Dates blocked.')
+            return redirect('blackout_manage', item_pk=item.pk)
+    else:
+        form = BlackoutDateForm(item=item)
+    upcoming = item.blackout_dates.filter(end_date__gte=timezone.localdate())
+    return render(request, 'bookings/blackout_manage.html', {
+        'item': item,
+        'form': form,
+        'blackouts': upcoming,
+    })
+
+
+@verified_required
+@require_POST
+def blackout_delete(request, pk):
+    blackout = get_object_or_404(
+        BlackoutDate, pk=pk, item__owner=request.user
+    )
+    item_pk = blackout.item_id
+    blackout.delete()
+    messages.success(request, 'Dates are available again.')
+    return redirect('blackout_manage', item_pk=item_pk)

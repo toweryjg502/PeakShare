@@ -9,6 +9,8 @@ from accounts.decorators import verified_required
 from .forms import ItemEditForm, ItemForm
 from .models import Category, Item, ItemPhoto
 
+from bookings.availability import unavailable_ranges
+
 def item_list(request):
     items = (
         Item.objects.filter(is_active=True)
@@ -35,7 +37,10 @@ def item_detail(request, pk):
     # Hidden listings are only visible to their owner
     if not item.is_active and item.owner != request.user:
         raise Http404
-    return render(request, 'listings/item_detail.html', {'item': item})
+    return render(request, 'listings/item_detail.html', {
+        'item': item,
+        'unavailable': unavailable_ranges(item),
+    })
 
 @verified_required
 def item_create(request):

@@ -19,7 +19,8 @@
 
     {% if user == item.owner %}
         <div>
-            <a href="{% url 'item_edit' item.pk %}">Edit listing</a>
+            <a href="{% url 'item_edit' item.pk %}">Edit listing</a> |
+            <a href="{% url 'blackout_manage' item.pk %}">Manage availability</a>
             <form method="post" action="{% url 'item_toggle_active' item.pk %}" style="display: inline;">
                 {% csrf_token %}
                 <button type="submit">{% if item.is_active %}Hide listing{% else %}Show listing{% endif %}</button>
@@ -42,6 +43,13 @@
     <p><strong>Category:</strong> {{ item.category.name }}</p>
     <p><strong>Condition:</strong> {{ item.get_condition_display }}</p>
     <p><strong>Lender:</strong> {{ item.owner.first_name|default:item.owner.username }}</p>
+
+    <h3>Unavailable dates</h3>
+    {% for r in unavailable %}
+        <p>{{ r.start }} to {{ r.end }} &middot; {% if r.kind == 'booked' %}Booked{% else %}Lender unavailable{% endif %}</p>
+    {% empty %}
+        <p>No upcoming dates are blocked.</p>
+    {% endfor %}
 
     <h3>Description</h3>
     <p>{{ item.description|linebreaksbr }}</p>

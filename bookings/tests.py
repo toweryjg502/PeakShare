@@ -8,7 +8,7 @@ from django.utils import timezone
 from accounts.models import CustomUser
 from listings.models import Category, Item
 
-from .availability import is_available
+from .availability import is_available, unavailable_ranges
 from .models import BlackoutDate, Booking
 
 BASE = timezone.localdate() + timedelta(days=10)
@@ -274,3 +274,147 @@ class MyBookingsTests(TestCase):
         response = self.client.get(reverse('my_bookings'))
         self.assertContains(response, 'requested by renter')
         self.assertContains(response, 'Approve')
+
+class BlackoutManageTests(TestCase):
+    def setUp(self):
+        self.owner = make_user('owner')
+        self.other = make_user('other')
+        self.item = make_item(self.owner)
+        self.url = reverse('blackout_manage', args=[self.item.pk])
+
+    def post(self, start, end, reason=''):
+        return self.client.post(self.url, {
+            'start_date': start.isoformat(),
+            'end_date': end.isoformat(),
+            'reason': reason,
+        })
+
+    def test_anonymous_redirected_to_login(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_unverified_owner_redirected_to_profile(self):
+        self.owner.is_verified = False
+        self.owner.save()
+        self.client.force_login(self.owner)
+        self.assertRedirects(self.client.get(self.url), reverse('profile'))
+
+    def test_non_owner_gets_404(self):
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.get(self.url).status_code, 404)
+        self.assertEqual(self.post(d(0), d(1)).status_code, 404)
+        self.assertEqual(BlackoutDate.objects.count(), 0)
+
+    def test_owner_sees_page(self):
+        self.client.force_login(self.owner)
+        self.assertEqual(self.client.get(self.url).status_code, 200)
+
+    def test_owner_adds_blackout(self):
+        self.client.force_login(self.owner)
+        response = self.post(d(0), d(2), 'Trip home')
+        self.assertRedirects(response, self.url)
+        blackout = BlackoutDate.objects.get()
+        self.assertEqual(blackout.item, self.item)
+        self.assertEqual(blackout.reason, 'Trip home')
+
+    def test_reason_is_optional(self):
+        self.client.force_login(self.owner)
+        self.post(d(0), d(2))
+        self.assertEqual(BlackoutDate.objects.count(), 1)
+
+    def test_rejects_start_in_the_past(self):
+        self.client.force_login(self.owner)
+        today = timezone.localdate()
+        response = self.post(today - timedelta(days=1), today)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(BlackoutDate.objects.count(), 0)
+
+    def test_rejects_end_before_start(self):
+        self.client.force_login(self.owner)
+        response = self.post(d(5), d(2))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(BlackoutDate.objects.count(), 0)
+
+    def test_rejects_overlap_with_approved_booking(self):
+        make_booking(self.item, self.other, d(1), d(3))
+        self.client.force_login(self.owner)
+        response = self.post(d(3), d(5))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(BlackoutDate.objects.count(), 0)
+
+    def test_pending_booking_does_not_block_a_blackout(self):
+        make_booking(self.item, self.other, d(1), d(3), Booking.Status.PENDING)
+        self.client.force_login(self.owner)
+        self.post(d(2), d(4))
+        self.assertEqual(BlackoutDate.objects.count(), 1)
+
+
+class BlackoutDeleteTests(TestCase):
+    def setUp(self):
+        self.owner = make_user('owner')
+        self.other = make_user('other')
+        self.item = make_item(self.owner)
+        self.blackout = BlackoutDate.objects.create(
+            item=self.item, start_date=d(0), end_date=d(2)
+        )
+        self.url = reverse('blackout_delete', args=[self.blackout.pk])
+
+    def test_owner_deletes(self):
+        self.client.force_login(self.owner)
+        response = self.client.post(self.url)
+        self.assertRedirects(
+            response, reverse('blackout_manage', args=[self.item.pk])
+        )
+        self.assertFalse(BlackoutDate.objects.exists())
+
+    def test_non_owner_gets_404_and_nothing_changes(self):
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.post(self.url).status_code, 404)
+        self.assertTrue(BlackoutDate.objects.exists())
+
+    def test_get_not_allowed(self):
+        self.client.force_login(self.owner)
+        self.assertEqual(self.client.get(self.url).status_code, 405)
+
+    def test_anonymous_redirected_to_login(self):
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+
+class UnavailableRangesTests(TestCase):
+    def setUp(self):
+        self.owner = make_user('owner')
+        self.renter = make_user('renter')
+        self.item = make_item(self.owner)
+
+    def test_includes_approved_and_blackouts_soonest_first(self):
+        make_booking(self.item, self.renter, d(5), d(6))
+        BlackoutDate.objects.create(item=self.item, start_date=d(1), end_date=d(2))
+        ranges = unavailable_ranges(self.item)
+        self.assertEqual(
+            [(r['start'], r['kind']) for r in ranges],
+            [(d(1), 'blocked'), (d(5), 'booked')],
+        )
+
+    def test_excludes_pending_declined_and_cancelled(self):
+        for status in (
+            Booking.Status.PENDING,
+            Booking.Status.DECLINED,
+            Booking.Status.CANCELLED,
+        ):
+            make_booking(self.item, self.renter, d(0), d(1), status)
+        self.assertEqual(unavailable_ranges(self.item), [])
+
+    def test_excludes_past_ranges(self):
+        make_booking(self.item, self.renter, d(-30), d(-28))
+        BlackoutDate.objects.create(item=self.item, start_date=d(-20), end_date=d(-18))
+        self.assertEqual(unavailable_ranges(self.item), [])
+
+    def test_detail_page_shows_section_without_renter_info(self):
+        make_booking(self.item, self.renter, d(1), d(2))
+        response = self.client.get(reverse('item_detail', args=[self.item.pk]))
+        self.assertContains(response, 'Unavailable dates')
+        self.assertContains(response, 'Booked')
+        self.assertNotContains(response, 'renter')

@@ -1,5 +1,5 @@
 from .models import BlackoutDate, Booking
-
+from django.utils import timezone
 
 def is_available(item, start, end, exclude=None):
     """True if the item is free for every day from start to end (inclusive).
@@ -19,3 +19,22 @@ def is_available(item, start, end, exclude=None):
         item=item, start_date__lte=end, end_date__gte=start
     )
     return not booked.exists() and not blacked_out.exists()
+
+def unavailable_ranges(item):
+    """Upcoming approved bookings and blackout dates, soonest first.
+
+    Returns dicts with start, end, and kind ('booked' or 'blocked'). It never
+    includes who booked or why a date is blocked.
+    """
+    today = timezone.localdate()
+    ranges = [
+        {'start': b.start_date, 'end': b.end_date, 'kind': 'booked'}
+        for b in Booking.objects.filter(
+            item=item, status=Booking.Status.APPROVED, end_date__gte=today
+        )
+    ]
+    ranges += [
+        {'start': b.start_date, 'end': b.end_date, 'kind': 'blocked'}
+        for b in BlackoutDate.objects.filter(item=item, end_date__gte=today)
+    ]
+    return sorted(ranges, key=lambda r: (r['start'], r['end']))
