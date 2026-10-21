@@ -66,10 +66,10 @@ We are building a focused MVP first and adding secondary features only after the
 - [x] Automated tests for registration
 
 **MVP core (in progress)**
-- [ ] Single-use email verification
-- [ ] Connect Neon PostgreSQL
-- [ ] Item listings by category
-- [ ] Calendar-based booking
+- [x] Single-use email verification
+- [x] Connect Neon PostgreSQL
+- [x] Item listings by category
+- [x] Calendar-based booking
 - [ ] Stripe split payments and deposit holds
 
 **Next**
