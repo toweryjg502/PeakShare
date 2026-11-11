@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Alerts{% endblock %}
+{% block content %}
+<h1>Alerts</h1>
+{% for alert in alerts %}
+    <div class="card{% if not alert.read_at %} unread-alert{% endif %}">
+        <p><strong>{{ alert.get_kind_display }}</strong> · {{ alert.created_at|date:'M j, Y g:i A' }}</p>
+        <p>{{ alert.message }}</p>
+        <p>
+            <a href="{% url 'item_detail' alert.booking.item_id %}">{{ alert.booking.item.title }}</a>
+            · {{ alert.booking.start_date }} to {{ alert.booking.end_date }}
+        </p>
+        <form method="post" action="{% url 'booking_alert_open' alert.pk %}">
+            {% csrf_token %}
+            <button type="submit">Review booking</button>
+        </form>
+        {% if alert.read_at %}<p class="muted">Read {{ alert.read_at|date:'M j, Y g:i A' }}</p>{% else %}<p class="muted">Unread</p>{% endif %}
+    </div>
+{% empty %}
+    <p class="muted">You don’t have any alerts yet.</p>
+{% endfor %}
+{% endblock %}

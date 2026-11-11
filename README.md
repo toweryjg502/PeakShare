@@ -117,7 +117,24 @@ python manage.py runserver
 
 Then open `http://127.0.0.1:8000/accounts/register/` to create an account.
 
-Database, payment, and email settings will move to environment variables as Neon, Stripe, and SMTP are added. **Never commit real keys or connection strings to the repository.**
+Database, payment, and email settings are read from environment variables. **Never commit real keys or connection strings to the repository.**
+
+### Testing Stripe checkout locally
+
+Checkout is restricted to card payments in this first test-mode flow. The renter pays the full rental amount to PeakShare; the lender transfer is intentionally deferred until rental completion is implemented. Deposits are not included.
+
+1. In your local `.env`, set your Stripe **test** secret key (`STRIPE_SECRET_KEY`) and, optionally, publishable key (`STRIPE_PUBLISHABLE_KEY`). Keep `DEBUG=True` while developing and use only `sk_test_` / `pk_test_` keys.
+2. Install and sign in to the [Stripe CLI](https://docs.stripe.com/stripe-cli), then run:
+
+   ```bash
+   stripe listen --forward-to 127.0.0.1:8000/bookings/stripe/webhook/
+   ```
+
+3. Copy the `whsec_...` value printed by the CLI into `.env` as `STRIPE_WEBHOOK_SECRET`, then restart Django. Keep the CLI listener running while you use checkout.
+4. Create or use two verified accounts. The lender needs to complete Connect payout setup from their profile. Approve a booking as the lender, then sign in as the renter and choose **Pay now**.
+5. Use a Stripe test card, such as `4242 4242 4242 4242`, with any future expiry date and any three-digit CVC. Check the booking page after checkout; the webhook should change payment to **Paid** and rental progress to **Ready for pickup**.
+
+The webhook endpoint is `/bookings/stripe/webhook/`. It verifies Stripe's signature and ignores unrelated or stale checkout sessions. Do not expose this endpoint to live payments until refund, cancellation, transfer, and dispute handling are implemented.
 
 <details>
 <summary><b>Known risks and mitigations</b></summary>

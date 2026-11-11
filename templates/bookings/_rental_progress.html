@@ -1,0 +1,104 @@
+<div class="rental-progress">
+    {% if b.rental_status == 'ready' %}
+        <h3>Pickup handoff</h3>
+        <p>
+            {% if b.pickup_renter_confirmed_at %}Renter confirmed{% else %}Waiting for renter{% endif %}
+            ·
+            {% if b.pickup_lender_confirmed_at %}Lender confirmed{% else %}Waiting for lender{% endif %}
+        </p>
+        {% if b.pickup_photo %}
+            <p>Pickup photo from the renter:</p>
+            <a href="{{ b.pickup_photo.image.url }}" target="_blank" rel="noopener">
+                <img src="{{ b.pickup_photo.image.url }}" alt="Pickup condition photo from renter" width="160">
+            </a>
+            {% if role == 'lender' and not b.pickup_lender_confirmed_at %}
+                <p>The renter added the pickup photo. Review it, then confirm pickup or flag an issue.</p>
+            {% elif role == 'renter' and not b.pickup_renter_confirmed_at %}
+                <p>After checking your photo, confirm the pickup so the lender can verify it too.</p>
+            {% endif %}
+            {% if role == 'renter' and not b.pickup_renter_confirmed_at or role == 'lender' and not b.pickup_lender_confirmed_at %}
+                <form method="post" action="{% url 'booking_rental_action' b.pk 'pickup' %}">
+                    {% csrf_token %}<button type="submit">Confirm pickup</button>
+                </form>
+            {% endif %}
+        {% else %}
+            {% if role == 'renter' %}
+                <p>Add one photo of the gear at pickup. The lender will review it and confirm.</p>
+                <form method="post" enctype="multipart/form-data" action="{% url 'booking_photo_upload' b.pk 'pickup' %}">
+                    {% csrf_token %}
+                    <label>Pickup condition photo
+                        <input type="file" name="image" accept="image/*" required>
+                    </label>
+                    <button type="submit" class="secondary">Add pickup photo</button>
+                </form>
+            {% else %}
+                <p>Waiting for the renter to add the pickup photo.</p>
+            {% endif %}
+        {% endif %}
+    {% elif b.rental_status == 'picked_up' %}
+        <h3>Return handoff</h3>
+        <p>
+            {% if b.return_renter_confirmed_at %}Renter confirmed{% else %}Waiting for renter{% endif %}
+            ·
+            {% if b.return_lender_confirmed_at %}Lender confirmed{% else %}Waiting for lender{% endif %}
+        </p>
+        {% if b.return_photo %}
+            <p>Return photo from the lender:</p>
+            <a href="{{ b.return_photo.image.url }}" target="_blank" rel="noopener">
+                <img src="{{ b.return_photo.image.url }}" alt="Return condition photo from lender" width="160">
+            </a>
+            {% if role == 'renter' and not b.return_renter_confirmed_at %}
+                <p>The lender added the return photo. Review it, then confirm return or flag an issue.</p>
+            {% elif role == 'lender' and not b.return_lender_confirmed_at %}
+                <p>After checking your photo, confirm the return so the renter can verify it too.</p>
+            {% endif %}
+            {% if role == 'renter' and not b.return_renter_confirmed_at or role == 'lender' and not b.return_lender_confirmed_at %}
+                <form method="post" action="{% url 'booking_rental_action' b.pk 'return' %}">
+                    {% csrf_token %}<button type="submit">Confirm return</button>
+                </form>
+            {% endif %}
+        {% else %}
+            {% if role == 'lender' %}
+                <p>Add one photo of the gear when it is returned. The renter will review it and confirm.</p>
+                <form method="post" enctype="multipart/form-data" action="{% url 'booking_photo_upload' b.pk 'return' %}">
+                    {% csrf_token %}
+                    <label>Return condition photo
+                        <input type="file" name="image" accept="image/*" required>
+                    </label>
+                    <button type="submit" class="secondary">Add return photo</button>
+                </form>
+            {% else %}
+                <p>Waiting for the lender to add the return photo.</p>
+            {% endif %}
+        {% endif %}
+    {% elif b.rental_status == 'returned' %}
+        <h3>Return confirmed · payout {{ b.get_payout_status_display }}</h3>
+        {% if role == 'lender' and b.payout_status == 'failed' %}
+            <form method="post" action="{% url 'booking_rental_action' b.pk 'retry-payout' %}">
+                {% csrf_token %}<button type="submit">Retry lender transfer</button>
+            </form>
+        {% endif %}
+    {% elif b.rental_status == 'completed' %}
+        <p>Rental complete. The lender share was transferred to their Stripe balance. Stripe pays it out to their bank on the account’s payout schedule.</p>
+    {% elif b.rental_status == 'disputed' %}
+        <p>Rental flagged for admin review. Lender transfer is on hold.</p>
+    {% endif %}
+
+    {% if b.rental_status == 'ready' or b.rental_status == 'picked_up' or b.rental_status == 'returned' %}
+        <form method="post" action="{% url 'booking_rental_action' b.pk 'dispute' %}">
+            {% csrf_token %}
+            <label>What’s the issue? {{ dispute_form.reason }}</label>
+            <button type="submit" class="secondary">Flag an issue</button>
+        </form>
+    {% endif %}
+    {% if b.rental_status == 'completed' or b.rental_status == 'disputed' %}
+        <div class="condition-photos">
+            {% for photo in b.condition_photos.all %}
+                <p>{{ photo.get_stage_display }} photo · {{ photo.uploaded_by }}</p>
+                <a href="{{ photo.image.url }}" target="_blank" rel="noopener">
+                    <img src="{{ photo.image.url }}" alt="{{ photo.get_stage_display }} condition photo by {{ photo.uploaded_by }}" width="120">
+                </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>

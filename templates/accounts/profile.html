@@ -20,4 +20,28 @@
         </form>
     {% endif %}
 </div>
+
+<div class="card">
+    <h2>Lender payouts</h2>
+    {% if user.stripe_payouts_ready %}
+        <p><span class="badge good">Payouts ready</span></p>
+        <p>You can receive payments for your listings.</p>
+    {% elif user.is_verified %}
+        {% if user.stripe_account_id %}
+            <p>Payout setup is incomplete. Continue setup to receive payments for your listings.</p>
+            <form method="post" action="{% url 'payout_start' %}">
+                {% csrf_token %}
+                <button type="submit">Continue payout setup</button>
+            </form>
+        {% else %}
+            <p>Set up payouts to receive payments for your listings.</p>
+            <form method="post" action="{% url 'payout_start' %}">
+                {% csrf_token %}
+                <button type="submit">Set up payouts</button>
+            </form>
+        {% endif %}
+    {% else %}
+        <p>Verify your campus email before setting up lender payouts.</p>
+    {% endif %}
+</div>
 {% endblock %}

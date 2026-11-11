@@ -9,4 +9,7 @@ urlpatterns = [
     path('profile/', views.profile_view, name='profile'),
     path('verify/<uidb64>/<token>/', views.verify_email_view, name='verify_email'),
     path('resend-verification/', views.resend_verification_view, name='resend_verification'),
+    path('payouts/start/', views.payout_start_view, name='payout_start'),
+    path('payouts/return/', views.payout_return_view, name='payout_return'),
+    path('payouts/refresh/', views.payout_refresh_view, name='payout_refresh'),
 ]

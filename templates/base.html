@@ -16,6 +16,16 @@
                 <a href="{% url 'item_list' %}">Browse</a>
                 {% if user.is_authenticated %}
                     <a href="{% url 'my_bookings' %}">My bookings</a>
+                    <a href="{% url 'booking_alert_list' %}">
+                        Alerts <span
+                            id="booking-alert-count"
+                            class="notification-count"
+                            data-count="{{ unread_booking_alert_count }}"
+                            data-latest-id="{{ latest_booking_alert_id }}"
+                            data-status-url="{% url 'booking_alert_status' %}"
+                            {% if not unread_booking_alert_count %}hidden{% endif %}
+                        >{{ unread_booking_alert_count }}</span>
+                    </a>
                     <a href="{% url 'item_create' %}">List an item</a>
                     <a href="{% url 'profile' %}">Profile</a>
                     <form method="post" action="{% url 'logout' %}">
@@ -32,6 +42,13 @@
     </header>
 
     <main class="container">
+        {% if user.is_authenticated %}
+            <div id="booking-alert-toast" class="booking-alert-toast" role="status" aria-live="polite" hidden>
+                <span id="booking-alert-toast-message"></span>
+                <a href="{% url 'booking_alert_list' %}">View alerts</a>
+                <button type="button" class="secondary" id="booking-alert-toast-close" aria-label="Dismiss alert">Dismiss</button>
+            </div>
+        {% endif %}
         {% if messages %}
             <div class="messages">
                 {% for message in messages %}
@@ -42,5 +59,8 @@
 
         {% block content %}{% endblock %}
     </main>
+    {% if user.is_authenticated %}
+        <script src="{% static 'js/booking-alerts.js' %}" defer></script>
+    {% endif %}
 </body>
 </html>

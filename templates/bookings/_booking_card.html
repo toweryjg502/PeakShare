@@ -1,0 +1,50 @@
+<div class="card" id="booking-{{ b.pk }}">
+    <p>
+        <a href="{% url 'item_detail' b.item.pk %}">{{ b.item.title }}</a>
+        {% if role == 'lender' %}
+            requested by {{ b.renter.first_name|default:b.renter.username }}
+        {% endif %}
+    </p>
+    <p>{{ b.start_date }} to {{ b.end_date }}
+       ({{ b.days }} day{{ b.days|pluralize }}) &middot; ${{ b.total_price }}</p>
+    <p>Status: <span class="badge status-{{ b.status }}">{{ b.get_status_display }}</span></p>
+    <p>Payment: {{ b.get_payment_status_display }} · Rental: {{ b.get_rental_status_display }}</p>
+    {% if b.payment_status == 'paid' %}
+        {% include 'bookings/_rental_progress.html' with b=b role=role %}
+    {% endif %}
+
+    {% if role == 'lender' %}
+        {% if b.status == 'pending' %}
+            <div class="actions">
+                <form method="post" action="{% url 'booking_action' b.pk 'approve' %}">
+                    {% csrf_token %}<button type="submit">Approve</button>
+                </form>
+                <form method="post" action="{% url 'booking_action' b.pk 'decline' %}">
+                    {% csrf_token %}<button type="submit" class="secondary">Decline</button>
+                </form>
+            </div>
+        {% elif b.status == 'approved' and b.payment_status == 'unpaid' or b.status == 'approved' and b.payment_status == 'failed' %}
+            <form method="post" action="{% url 'booking_action' b.pk 'cancel' %}">
+                {% csrf_token %}<button type="submit" class="secondary">Cancel booking</button>
+            </form>
+        {% endif %}
+    {% else %}
+        {% if b.status == 'approved' and b.payment_status == 'unpaid' or b.status == 'approved' and b.payment_status == 'failed' or b.status == 'approved' and b.payment_status == 'pending' %}
+            <div class="actions">
+                <form method="post" action="{% url 'booking_checkout' b.pk %}">
+                    {% csrf_token %}
+                    <button type="submit">{% if b.payment_status == 'pending' %}Continue payment{% else %}Pay now · ${{ b.total_price }}{% endif %}</button>
+                </form>
+                {% if b.payment_status != 'pending' %}
+                    <form method="post" action="{% url 'booking_action' b.pk 'cancel' %}">
+                        {% csrf_token %}<button type="submit" class="secondary">Cancel</button>
+                    </form>
+                {% endif %}
+            </div>
+        {% elif b.status == 'pending' %}
+            <form method="post" action="{% url 'booking_action' b.pk 'cancel' %}">
+                {% csrf_token %}<button type="submit" class="secondary">Cancel</button>
+            </form>
+        {% endif %}
+    {% endif %}
+</div>

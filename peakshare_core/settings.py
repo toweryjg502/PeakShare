@@ -71,6 +71,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'bookings.context_processors.unread_booking_alert_count',
             ],
         },
     },
@@ -87,6 +88,15 @@ if os.environ.get('DATABASE_URL'):
         'default': dj_database_url.parse(
             os.environ['DATABASE_URL'], conn_max_age=600
         )
+    }
+    # Don't hold connections open while tests run, or cleanup can't drop the test DB
+    DATABASES['default']['TEST'] = {'NAME': 'test_neondb'}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
     # Don't hold connections open while tests run, or cleanup can't drop the test DB
     DATABASES['default']['TEST'] = {'NAME': 'test_neondb'}
@@ -143,3 +153,19 @@ import sys
 
 if 'test' in sys.argv:
     DATABASES['default']['CONN_MAX_AGE'] = 0
+
+# Stripe (test mode only until launch)
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+PLATFORM_FEE_PERCENT = 10
+
+# Safety guard: never run with live keys while developing
+if DEBUG and (
+    STRIPE_SECRET_KEY.startswith('sk_live_')
+    or STRIPE_PUBLISHABLE_KEY.startswith('pk_live_')
+):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured(
+        'Live Stripe keys are not allowed while DEBUG=True. Use sk_test_/pk_test_ keys.'
+    )

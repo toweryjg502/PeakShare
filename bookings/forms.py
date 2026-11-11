@@ -2,7 +2,7 @@ from django import forms
 from django.utils import timezone
 
 from .availability import is_available
-from .models import BlackoutDate, Booking
+from .models import BlackoutDate, Booking, ConditionPhoto
 
 class BookingRequestForm(forms.ModelForm):
     class Meta:
@@ -71,3 +71,19 @@ class BlackoutDateForm(forms.ModelForm):
                 'Cancel that booking first.'
             )
         return cleaned
+
+
+class ConditionPhotoForm(forms.ModelForm):
+    class Meta:
+        model = ConditionPhoto
+        fields = ('image',)
+
+
+class DisputeForm(forms.Form):
+    reason = forms.CharField(
+        max_length=500,
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': 'Briefly describe the issue (up to 500 characters).',
+        }),
+    )
