@@ -1,6 +1,7 @@
 from django.contrib import messages
 import logging
 from django.db import transaction
+from django.db.models import F
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -14,8 +15,11 @@ from accounts.decorators import verified_required
 from listings.models import Item
 
 from .availability import is_available
-from .forms import BlackoutDateForm, BookingRequestForm, ConditionPhotoForm, DisputeForm
-from .models import BlackoutDate, Booking, BookingAlert, ConditionPhoto
+from .forms import (
+    BlackoutDateForm, BookingCancelForm, BookingRequestForm, BookingReviewForm,
+    ConditionPhotoForm, DisputeForm,
+)
+from .models import BlackoutDate, Booking, BookingAlert, BookingReview, ConditionPhoto
 from .stripe_payments import create_checkout_session, create_lender_transfer
 
 logger = logging.getLogger(__name__)
@@ -34,6 +38,8 @@ def booking_request(request, item_pk):
             booking.item = item
             booking.renter = request.user
             booking.total_price = item.daily_price * booking.days
+            booking.agreement_accepted_at = timezone.now()
+            booking.agreement_version = 'rental-terms-2026-11'
             booking.save()
             messages.success(
                 request, 'Request sent! The lender will approve or decline it.'
@@ -59,6 +65,7 @@ def my_bookings(request):
     def prepare_bookings(queryset):
         bookings = list(queryset)
         for booking in bookings:
+            booking.review_submitted = booking.reviews.filter(reviewer=request.user).exists()
             photos = list(booking.condition_photos.all())
             booking.pickup_photo = next(
                 (photo for photo in photos if photo.stage == ConditionPhoto.Stage.PICKUP
@@ -88,10 +95,37 @@ def my_bookings(request):
 
 
 @verified_required
+@require_POST
+def booking_review(request, pk):
+    booking = _booking_for_participant(request, pk)
+    if booking.rental_status != Booking.RentalStatus.COMPLETED:
+        messages.error(request, 'Reviews are available after both sides confirm the return.')
+        return redirect('my_bookings')
+    form = BookingReviewForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, 'Choose a rating from 1 to 5 and try again.')
+        return redirect('my_bookings')
+    reviewee = booking.item.owner if request.user.pk == booking.renter_id else booking.renter
+    _, created = BookingReview.objects.get_or_create(
+        booking=booking,
+        reviewer=request.user,
+        defaults={
+            'reviewee': reviewee,
+            'rating': int(form.cleaned_data['rating']),
+            'comment': form.cleaned_data['comment'],
+        },
+    )
+    messages.success(request, 'Review submitted.') if created else messages.info(
+        request, 'You already reviewed this rental.'
+    )
+    return redirect('my_bookings')
+
+
+@verified_required
 def booking_alert_list(request):
     alerts = BookingAlert.objects.filter(recipient=request.user).select_related(
         'booking', 'booking__item'
-    ).order_by('-read_at__isnull', '-created_at', '-id')
+    ).order_by(F('read_at').asc(nulls_first=True), '-created_at', '-id')
     return render(request, 'bookings/alert_list.html', {'alerts': alerts})
 
 
@@ -122,6 +156,24 @@ def _booking_for_participant(request, pk):
     if request.user.pk not in (booking.renter_id, booking.item.owner_id):
         raise Http404
     return booking
+
+
+def _notify_booking_cancelled(booking, actor=None, refund_pending=False, refunded=False):
+    if refund_pending:
+        message = f'{booking.item.title} was cancelled. The refund is processing.'
+    elif refunded:
+        message = f'{booking.item.title} was cancelled and the payment was refunded.'
+    else:
+        message = f'{booking.item.title} was cancelled.'
+    participants = (booking.renter, booking.item.owner)
+    for participant in participants:
+        if actor is None or participant.pk != actor.pk:
+            BookingAlert.objects.create(
+                recipient=participant,
+                booking=booking,
+                kind=BookingAlert.Kind.CANCELLATION,
+                message=message[:320],
+            )
 
 
 @verified_required
@@ -191,7 +243,8 @@ def _complete_lender_transfer(booking_id, retry_processing=False):
         both_confirmed = (
             booking.return_renter_confirmed_at and booking.return_lender_confirmed_at
         )
-        if booking.rental_status != Booking.RentalStatus.RETURNED or not both_confirmed:
+        if (booking.rental_status != Booking.RentalStatus.RETURNED or not both_confirmed
+                or booking.payment_status != Booking.PaymentStatus.PAID):
             return False
         if booking.payout_status == Booking.PayoutStatus.TRANSFERRED:
             return True
@@ -350,8 +403,12 @@ def booking_checkout(request, pk):
     if booking.status != Booking.Status.APPROVED:
         messages.error(request, 'Only approved bookings can be paid.')
         return redirect('my_bookings')
-    if booking.payment_status == Booking.PaymentStatus.PAID:
-        messages.info(request, 'This booking is already paid.')
+    if booking.payment_status in (
+        Booking.PaymentStatus.PAID,
+        Booking.PaymentStatus.REFUNDING,
+        Booking.PaymentStatus.REFUNDED,
+    ):
+        messages.info(request, 'This booking has already been paid or refunded.')
         return redirect('my_bookings')
     if not booking.item.owner.stripe_account_id or not booking.item.owner.stripe_payouts_ready:
         messages.error(request, 'The lender must finish Stripe payout setup before you can pay.')
@@ -407,6 +464,56 @@ def stripe_webhook(request):
         return HttpResponseBadRequest('Invalid webhook signature or payload.')
 
     event_type = event['type']
+    if event_type == 'charge.refunded':
+        charge = event['data']['object'].to_dict()
+        payment_intent = charge.get('payment_intent')
+        if isinstance(payment_intent, dict):
+            payment_intent = payment_intent.get('id')
+        if (payment_intent and charge.get('amount', 0) > 0
+                and charge.get('amount_refunded', 0) >= charge.get('amount', 0)):
+            with transaction.atomic():
+                booking = Booking.objects.select_for_update().filter(
+                    stripe_payment_intent_id=payment_intent
+                ).first()
+                if booking:
+                    already_refunded = (
+                        booking.payment_status == Booking.PaymentStatus.REFUNDED
+                    )
+                    booking.payment_status = Booking.PaymentStatus.REFUNDED
+                    updates = ['payment_status', 'updated_at']
+                    if booking.status == Booking.Status.APPROVED:
+                        pickup_started = any((
+                            booking.pickup_renter_confirmed_at,
+                            booking.pickup_lender_confirmed_at,
+                        )) or booking.rental_status not in (
+                            Booking.RentalStatus.NOT_STARTED, Booking.RentalStatus.READY
+                        )
+                        if pickup_started:
+                            previous_status = booking.rental_status
+                            booking.rental_status = Booking.RentalStatus.DISPUTED
+                            booking.dispute_previous_status = previous_status
+                            booking.dispute_reason = (
+                                'Full Stripe refund was issued after pickup began; admin review required.'
+                            )
+                            booking.disputed_at = timezone.now()
+                            updates.extend([
+                                'rental_status', 'dispute_previous_status',
+                                'dispute_reason', 'disputed_at',
+                            ])
+                        else:
+                            booking.status = Booking.Status.CANCELLED
+                            booking.cancelled_at = timezone.now()
+                            booking.cancellation_reason = booking.cancellation_reason or (
+                                'Full refund issued through Stripe.'
+                            )
+                            updates.extend([
+                                'status', 'cancelled_at', 'cancellation_reason',
+                            ])
+                    booking.save(update_fields=updates)
+                    if booking.status == Booking.Status.CANCELLED and not already_refunded:
+                        _notify_booking_cancelled(booking, refunded=True)
+        return HttpResponse(status=200)
+
     if event_type not in {
         'checkout.session.completed',
         'checkout.session.async_payment_succeeded',
@@ -429,6 +536,10 @@ def stripe_webhook(request):
             return HttpResponse(status=200)
         # Ignore old/forged sessions after a newer checkout session was created.
         if booking.stripe_checkout_session_id != session.get('id'):
+            return HttpResponse(status=200)
+        if booking.payment_status in (
+            Booking.PaymentStatus.REFUNDING, Booking.PaymentStatus.REFUNDED
+        ):
             return HttpResponse(status=200)
 
         payment_intent = session.get('payment_intent')
@@ -469,10 +580,17 @@ def booking_action(request, pk, action):
     if action in ('approve', 'decline') and not is_owner:
         raise Http404
 
+    cancel_form = BookingCancelForm(request.POST) if action == 'cancel' else None
+    if cancel_form is not None and not cancel_form.is_valid():
+        messages.error(request, 'Check the cancellation reason and try again.')
+        return redirect('my_bookings')
+
     with transaction.atomic():
         # Lock the item so two approvals can't race (enforced on PostgreSQL)
         Item.objects.select_for_update().get(pk=booking.item_id)
-        booking.refresh_from_db()
+        booking = Booking.objects.select_for_update().select_related(
+            'item', 'item__owner', 'renter'
+        ).get(pk=booking.pk)
 
         if action == 'approve':
             if booking.status != Booking.Status.PENDING:
@@ -498,16 +616,121 @@ def booking_action(request, pk, action):
         else:  # cancel
             if booking.status not in (Booking.Status.PENDING, Booking.Status.APPROVED):
                 messages.error(request, "That booking can't be cancelled.")
-            elif booking.payment_status in (
-                Booking.PaymentStatus.PENDING, Booking.PaymentStatus.PAID
-            ):
-                messages.error(
-                    request,
-                    'This booking has a payment in progress or completed. Contact support to cancel it.',
+            elif booking.payment_status == Booking.PaymentStatus.PENDING:
+                if not settings.STRIPE_SECRET_KEY or not booking.stripe_checkout_session_id:
+                    messages.error(request, 'The open checkout could not be closed. Contact support.')
+                else:
+                    try:
+                        stripe.api_key = settings.STRIPE_SECRET_KEY
+                        session = stripe.checkout.Session.retrieve(
+                            booking.stripe_checkout_session_id
+                        )
+                        if session.status == 'open':
+                            session = stripe.checkout.Session.expire(session.id)
+                    except stripe.StripeError:
+                        logger.exception('Could not close checkout for booking %s', booking.pk)
+                        messages.error(request, 'Stripe could not close checkout. Try again or contact support.')
+                    else:
+                        if session.status == 'complete' and session.payment_status == 'paid':
+                            payment_intent = session.payment_intent
+                            if hasattr(payment_intent, 'id'):
+                                payment_intent = payment_intent.id
+                            booking.payment_status = Booking.PaymentStatus.PAID
+                            booking.stripe_payment_intent_id = payment_intent or ''
+                            booking.rental_status = Booking.RentalStatus.READY
+                            booking.save(update_fields=[
+                                'payment_status', 'stripe_payment_intent_id',
+                                'rental_status', 'updated_at',
+                            ])
+                            messages.info(
+                                request,
+                                'Payment just completed. Submit the cancellation again to request a refund.',
+                            )
+                        elif session.status in ('expired', 'complete'):
+                            booking.status = Booking.Status.CANCELLED
+                            booking.payment_status = Booking.PaymentStatus.UNPAID
+                            booking.cancelled_by = request.user
+                            booking.cancelled_at = timezone.now()
+                            booking.cancellation_reason = cancel_form.cleaned_data['reason']
+                            booking.save(update_fields=[
+                                'status', 'payment_status', 'cancelled_by', 'cancelled_at',
+                                'cancellation_reason', 'updated_at',
+                            ])
+                            _notify_booking_cancelled(booking, actor=request.user)
+                            messages.success(request, 'Checkout closed and booking cancelled.')
+                        else:
+                            messages.error(request, 'Stripe has not confirmed checkout is closed. Try again shortly.')
+            elif booking.payment_status == Booking.PaymentStatus.PAID:
+                pickup_started = any((
+                    booking.pickup_renter_confirmed_at,
+                    booking.pickup_lender_confirmed_at,
+                )) or booking.rental_status not in (
+                    Booking.RentalStatus.NOT_STARTED, Booking.RentalStatus.READY
                 )
+                if pickup_started:
+                    messages.error(
+                        request,
+                        'This rental has entered the pickup stage. Flag an issue for admin review instead.',
+                    )
+                elif not settings.STRIPE_SECRET_KEY or not booking.stripe_payment_intent_id:
+                    messages.error(
+                        request,
+                        'A refund could not be started because payment details are unavailable. Contact support.',
+                    )
+                else:
+                    try:
+                        stripe.api_key = settings.STRIPE_SECRET_KEY
+                        refund = stripe.Refund.create(
+                            payment_intent=booking.stripe_payment_intent_id,
+                            reason='requested_by_customer',
+                            metadata={'booking_id': str(booking.pk)},
+                            idempotency_key=f'peakshare_booking_{booking.pk}_full_refund',
+                        )
+                    except stripe.StripeError:
+                        logger.exception('Refund failed for booking %s', booking.pk)
+                        messages.error(
+                            request,
+                            'Stripe could not start the refund. The booking is unchanged; try again or contact support.',
+                        )
+                    else:
+                        booking.status = Booking.Status.CANCELLED
+                        booking.payment_status = (
+                            Booking.PaymentStatus.REFUNDED
+                            if refund.status == 'succeeded'
+                            else Booking.PaymentStatus.REFUNDING
+                        )
+                        booking.stripe_refund_id = refund.id
+                        booking.cancelled_by = request.user
+                        booking.cancelled_at = timezone.now()
+                        booking.cancellation_reason = cancel_form.cleaned_data['reason']
+                        booking.save(update_fields=[
+                            'status', 'payment_status', 'stripe_refund_id', 'cancelled_by',
+                            'cancelled_at', 'cancellation_reason', 'updated_at',
+                        ])
+                        _notify_booking_cancelled(
+                            booking, actor=request.user,
+                            refund_pending=refund.status != 'succeeded',
+                            refunded=refund.status == 'succeeded',
+                        )
+                        messages.success(
+                            request,
+                            'Booking cancelled and refund issued.' if refund.status == 'succeeded'
+                            else 'Booking cancelled. The refund is processing and will update when Stripe confirms it.',
+                        )
+            elif booking.payment_status in (
+                Booking.PaymentStatus.REFUNDING, Booking.PaymentStatus.REFUNDED
+            ):
+                messages.info(request, 'A refund is already processing or has been issued.')
             else:
                 booking.status = Booking.Status.CANCELLED
-                booking.save(update_fields=['status', 'updated_at'])
+                booking.cancelled_by = request.user
+                booking.cancelled_at = timezone.now()
+                booking.cancellation_reason = cancel_form.cleaned_data['reason']
+                booking.save(update_fields=[
+                    'status', 'cancelled_by', 'cancelled_at', 'cancellation_reason',
+                    'updated_at',
+                ])
+                _notify_booking_cancelled(booking, actor=request.user)
                 messages.success(request, 'Booking cancelled.')
 
     return redirect('my_bookings')

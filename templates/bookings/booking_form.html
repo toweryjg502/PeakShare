@@ -7,6 +7,10 @@
     <h1>Request: {{ item.title }}</h1>
     <p class="muted">${{ item.daily_price }}/day. Dates are inclusive, up to {{ max_days }} days.
        The lender must approve your request. No payment is taken yet.</p>
+    <div class="card">
+        <h2>Rental agreement</h2>
+        <p>Keep to the agreed pickup and return dates and instructions. Inspect the gear at handoff, report problems promptly, and return it in the condition received, allowing for ordinary wear. Your request is not confirmed until the lender approves it.</p>
+    </div>
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}

@@ -113,14 +113,14 @@ Stripe checkout is optional for running the site. Use test-mode credentials only
 3. Start a local webhook listener in a second terminal:
 
    ```bash
-   stripe listen --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired --forward-to 127.0.0.1:8000/bookings/stripe/webhook/
+   stripe listen --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,charge.refunded --forward-to 127.0.0.1:8000/bookings/stripe/webhook/
    ```
 
 4. Copy the `whsec_...` value printed by the CLI into `.env` as `STRIPE_WEBHOOK_SECRET`, then restart Django.
 5. Use two verified accounts. The lender must finish Stripe Connect payout setup. The lender approves a booking; the renter selects **Pay now**.
 6. Use a Stripe test card such as `4242 4242 4242 4242`, with any future expiry and any three-digit CVC.
 
-The current test flow charges the rental amount at checkout. After pickup and return are confirmed by both participants, the app attempts to transfer 90% of the rental amount to the lender's Stripe balance; the platform retains 10% before Stripe processing fees. The transfer is held if a participant flags a dispute. Test payouts and checkout do not mean the flow is ready for live payments.
+The current test flow charges the rental amount at checkout. A renter or lender can cancel before pickup; for paid bookings, PeakShare requests a full Stripe refund and updates the booking when Stripe confirms it. After pickup and return are confirmed by both participants, the app attempts to transfer 90% of the rental amount to the lender's Stripe balance; the platform retains 10% before Stripe processing fees. The transfer is held if a participant flags a dispute. Refunds after pickup or lender payout are exceptional admin matters, not part of the normal cancellation flow. Test payouts and checkout do not mean the flow is ready for live payments.
 
 **Security deposits are not implemented.** The app also does not yet provide complete refund, cancellation, or dispute-resolution workflows. Do not use live payment keys or accept real payments until payment handling and the applicable marketplace terms have been reviewed and completed.
 
@@ -141,7 +141,7 @@ The current test flow charges the rental amount at checkout. After pickup and re
 
 - Decide whether to require security deposits, which listings need them, and how holds or refunds will work
 - Prepare and review a proper liability waiver and marketplace terms; the current acknowledgment is basic rental guidance only
-- Complete payment cancellation, refund, failed-transfer, and dispute-resolution processes
+- Add failed-refund recovery and admin resolution steps for escalated claims; no self-service refunds after pickup or lender payout
 - Configure production email, media storage, hosting, domain, and deployment security settings
 - Seed listings and test the full renter/lender journey with the campus community
 

@@ -3,13 +3,35 @@
 {% block content %}
 <h1>Browse Gear</h1>
 
-<div class="pills">
-    <a href="{% url 'item_list' %}" class="{% if not selected_category %}active{% endif %}">All</a>
-    {% for category in categories %}
-        <a href="{% url 'item_list' %}?category={{ category.slug }}"
-           class="{% if selected_category == category %}active{% endif %}">{{ category.name }}</a>
-    {% endfor %}
-</div>
+<details class="card filter-panel" {% if active_filters or filters.sort != 'newest' %}open{% endif %}>
+    <summary>Filters and sorting{% if active_filters %} · filters active{% endif %}</summary>
+    <form method="get" class="filters">
+        <label>Search <input type="search" name="q" value="{{ filters.q }}" placeholder="Tent, skis, backpack…"></label>
+        <label>Category
+            <select name="category"><option value="">All categories</option>
+                {% for category in categories %}<option value="{{ category.slug }}" {% if selected_category == category %}selected{% endif %}>{{ category.name }}</option>{% endfor %}
+            </select>
+        </label>
+        <label>Condition
+            <select name="condition"><option value="">Any condition</option>
+                {% for value, label in conditions %}<option value="{{ value }}" {% if filters.condition == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </label>
+        <label>Min $/day <input type="number" name="min_price" min="0" step="0.01" value="{{ filters.min_price }}"></label>
+        <label>Max $/day <input type="number" name="max_price" min="0" step="0.01" value="{{ filters.max_price }}"></label>
+        <label>Available from <input type="date" name="start_date" value="{{ filters.start_date }}"></label>
+        <label>Through <input type="date" name="end_date" value="{{ filters.end_date }}"></label>
+        <label>Sort by
+            <select name="sort">
+                {% for value, label in sort_options %}<option value="{{ value }}" {% if filters.sort == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </label>
+        <div class="actions">
+            <button type="submit">Apply</button>
+            <a class="button secondary" href="{% url 'item_list' %}">Clear</a>
+        </div>
+    </form>
+</details>
 
 <div class="grid">
     {% for item in items %}

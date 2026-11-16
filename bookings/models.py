@@ -16,6 +16,7 @@ class Booking(models.Model):
         UNPAID = 'unpaid', 'Unpaid'
         PENDING = 'pending', 'Payment pending'
         PAID = 'paid', 'Paid'
+        REFUNDING = 'refunding', 'Refund processing'
         FAILED = 'failed', 'Payment failed'
         REFUNDED = 'refunded', 'Refunded'
 
@@ -52,6 +53,7 @@ class Booking(models.Model):
     )
     stripe_checkout_session_id = models.CharField(max_length=255, blank=True)
     stripe_payment_intent_id = models.CharField(max_length=255, blank=True)
+    stripe_refund_id = models.CharField(max_length=255, blank=True)
     stripe_transfer_id = models.CharField(max_length=255, blank=True)
     payout_status = models.CharField(
         max_length=12, choices=PayoutStatus.choices, default=PayoutStatus.NOT_DUE
@@ -69,6 +71,14 @@ class Booking(models.Model):
         related_name='reported_booking_disputes', null=True, blank=True,
     )
     disputed_at = models.DateTimeField(null=True, blank=True)
+    cancellation_reason = models.CharField(max_length=500, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        related_name='cancelled_bookings', null=True, blank=True,
+    )
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    agreement_accepted_at = models.DateTimeField(null=True, blank=True)
+    agreement_version = models.CharField(max_length=30, blank=True)
     total_price = models.DecimalField(max_digits=8, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -137,6 +147,7 @@ class BookingAlert(models.Model):
         PICKUP_PHOTO = 'pickup_photo', 'Pickup photo added'
         RETURN_PHOTO = 'return_photo', 'Return photo added'
         DISPUTE = 'dispute', 'Booking dispute filed'
+        CANCELLATION = 'cancellation', 'Booking cancelled'
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
@@ -155,3 +166,26 @@ class BookingAlert(models.Model):
 
     def __str__(self):
         return f'{self.get_kind_display()} for {self.recipient}'
+
+
+class BookingReview(models.Model):
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='reviews')
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='written_reviews'
+    )
+    reviewee = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_reviews'
+    )
+    rating = models.PositiveSmallIntegerField()
+    comment = models.CharField(max_length=1000, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['booking', 'reviewer'], name='one_review_per_booking_reviewer'),
+            models.CheckConstraint(condition=models.Q(rating__gte=1, rating__lte=5), name='review_rating_1_to_5'),
+        ]
+
+    def __str__(self):
+        return f'{self.rating}/5 review for booking {self.booking_id}'

@@ -5,6 +5,10 @@ from .availability import is_available
 from .models import BlackoutDate, Booking, ConditionPhoto
 
 class BookingRequestForm(forms.ModelForm):
+    agreement = forms.BooleanField(
+        required=True,
+        label='I agree to the PeakShare rental terms shown above and will return the gear as agreed.',
+    )
     class Meta:
         model = Booking
         fields = ('start_date', 'end_date')
@@ -85,5 +89,25 @@ class DisputeForm(forms.Form):
         widget=forms.Textarea(attrs={
             'rows': 3,
             'placeholder': 'Briefly describe the issue (up to 500 characters).',
+        }),
+    )
+
+
+class BookingReviewForm(forms.Form):
+    rating = forms.ChoiceField(
+        choices=[(n, f'{n} star' + ('s' if n != 1 else '')) for n in range(5, 0, -1)],
+    )
+    comment = forms.CharField(
+        required=False, max_length=1000,
+        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Share a helpful note (optional).'}),
+    )
+
+
+class BookingCancelForm(forms.Form):
+    reason = forms.CharField(
+        required=False, max_length=500,
+        widget=forms.Textarea(attrs={
+            'rows': 2,
+            'placeholder': 'Reason for cancellation (optional).',
         }),
     )

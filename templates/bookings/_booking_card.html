@@ -9,9 +9,25 @@
        ({{ b.days }} day{{ b.days|pluralize }}) &middot; ${{ b.total_price }}</p>
     <p>Status: <span class="badge status-{{ b.status }}">{{ b.get_status_display }}</span></p>
     <p>Payment: {{ b.get_payment_status_display }} · Rental: {{ b.get_rental_status_display }}</p>
+    {% if b.status == 'cancelled' and b.cancellation_reason %}<p>Cancellation reason: {{ b.cancellation_reason }}</p>{% endif %}
     {% if b.payment_status == 'paid' %}
         {% include 'bookings/_rental_progress.html' with b=b role=role %}
     {% endif %}
+    {% if b.rental_status == 'completed' and not b.review_submitted %}
+        <form method="post" action="{% url 'booking_review' b.pk %}" class="review-form">
+            {% csrf_token %}
+            <label>Rate your {% if role == 'lender' %}renter{% else %}lender{% endif %}
+                <select name="rating" required>
+                    <option value="">Choose a rating</option>
+                    <option value="5">5 stars</option><option value="4">4 stars</option>
+                    <option value="3">3 stars</option><option value="2">2 stars</option>
+                    <option value="1">1 star</option>
+                </select>
+            </label>
+            <label>Comment (optional) <textarea name="comment" maxlength="1000" rows="2"></textarea></label>
+            <button type="submit">Submit review</button>
+        </form>
+    {% elif b.review_submitted %}<p class="muted">You reviewed this rental.</p>{% endif %}
 
     {% if role == 'lender' %}
         {% if b.status == 'pending' %}
@@ -23,10 +39,16 @@
                     {% csrf_token %}<button type="submit" class="secondary">Decline</button>
                 </form>
             </div>
-        {% elif b.status == 'approved' and b.payment_status == 'unpaid' or b.status == 'approved' and b.payment_status == 'failed' %}
-            <form method="post" action="{% url 'booking_action' b.pk 'cancel' %}">
-                {% csrf_token %}<button type="submit" class="secondary">Cancel booking</button>
-            </form>
+        {% elif b.status == 'approved' %}
+            {% if b.payment_status == 'unpaid' or b.payment_status == 'failed' or b.payment_status == 'pending' or b.payment_status == 'paid' and b.rental_status == 'ready' %}
+                <details class="cancel-panel">
+                    <summary>Cancel booking{% if b.payment_status == 'paid' %} and request a refund{% elif b.payment_status == 'pending' %} and close checkout{% endif %}</summary>
+                    <form method="post" action="{% url 'booking_action' b.pk 'cancel' %}">
+                        {% csrf_token %}<label>Reason (optional)<textarea name="reason" maxlength="500" rows="2"></textarea></label>
+                        <button type="submit" class="secondary">Confirm cancellation</button>
+                    </form>
+                </details>
+            {% endif %}
         {% endif %}
     {% else %}
         {% if b.status == 'approved' and b.payment_status == 'unpaid' or b.status == 'approved' and b.payment_status == 'failed' or b.status == 'approved' and b.payment_status == 'pending' %}
@@ -35,15 +57,26 @@
                     {% csrf_token %}
                     <button type="submit">{% if b.payment_status == 'pending' %}Continue payment{% else %}Pay now · ${{ b.total_price }}{% endif %}</button>
                 </form>
-                {% if b.payment_status != 'pending' %}
+                <details class="cancel-panel">
+                    <summary>Cancel booking{% if b.payment_status == 'pending' %} and close checkout{% endif %}</summary>
                     <form method="post" action="{% url 'booking_action' b.pk 'cancel' %}">
-                        {% csrf_token %}<button type="submit" class="secondary">Cancel</button>
+                        {% csrf_token %}<label>Reason (optional)<textarea name="reason" maxlength="500" rows="2"></textarea></label>
+                        <button type="submit" class="secondary">Confirm cancellation</button>
                     </form>
-                {% endif %}
+                </details>
             </div>
+        {% elif b.status == 'approved' and b.payment_status == 'paid' and b.rental_status == 'ready' %}
+            <details class="cancel-panel">
+                <summary>Cancel booking and request a refund</summary>
+                <form method="post" action="{% url 'booking_action' b.pk 'cancel' %}">
+                    {% csrf_token %}<label>Reason (optional)<textarea name="reason" maxlength="500" rows="2"></textarea></label>
+                    <button type="submit" class="secondary">Confirm cancellation</button>
+                </form>
+            </details>
         {% elif b.status == 'pending' %}
             <form method="post" action="{% url 'booking_action' b.pk 'cancel' %}">
-                {% csrf_token %}<button type="submit" class="secondary">Cancel</button>
+                {% csrf_token %}<label>Reason (optional)<textarea name="reason" maxlength="500" rows="2"></textarea></label>
+                <button type="submit" class="secondary">Cancel request</button>
             </form>
         {% endif %}
     {% endif %}

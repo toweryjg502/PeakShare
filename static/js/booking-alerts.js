@@ -5,6 +5,14 @@
   const close = document.getElementById('booking-alert-toast-close');
   if (!counter || !toast || !message || !close) return;
 
+  const sidebar = document.getElementById('booking-alert-sidebar');
+  const compactLayout = window.matchMedia('(max-width: 900px)');
+  function syncSidebarLayout() {
+    if (sidebar) sidebar.open = !compactLayout.matches;
+  }
+  syncSidebarLayout();
+  compactLayout.addEventListener('change', syncSidebarLayout);
+
   let latestId = Number(counter.dataset.latestId || 0);
   let dismissTimer;
 

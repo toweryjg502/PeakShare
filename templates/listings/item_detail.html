@@ -45,6 +45,16 @@
 </div>
 
 <div class="card">
+    <h3>Lender reviews{% if owner_review_count %} ({{ owner_review_count }}){% endif %}</h3>
+    {% for review in owner_reviews %}
+        <article class="review">
+            <p><strong>{{ review.rating }}/5</strong> · {{ review.reviewer.first_name|default:review.reviewer.username }} <span class="muted">{{ review.created_at|date:"M j, Y" }}</span></p>
+            {% if review.comment %}<p>{{ review.comment|linebreaksbr }}</p>{% endif %}
+        </article>
+    {% empty %}<p class="muted">No completed rental reviews yet.</p>{% endfor %}
+</div>
+
+<div class="card">
     <h3>Unavailable dates</h3>
     {% for r in unavailable %}
         <p>{{ r.start }} to {{ r.end }} &middot; {% if r.kind == 'booked' %}Booked{% else %}Lender unavailable{% endif %}</p>

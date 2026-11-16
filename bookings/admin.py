@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import BlackoutDate, Booking, BookingAlert, ConditionPhoto
+from .models import BlackoutDate, Booking, BookingAlert, BookingReview, ConditionPhoto
 
 
 class ConditionPhotoInline(admin.TabularInline):
@@ -27,13 +27,17 @@ class BookingAdmin(admin.ModelAdmin):
     list_display = (
         'item', 'renter', 'start_date', 'end_date', 'status',
         'payment_status', 'rental_status', 'payout_status', 'total_price',
+        'stripe_refund_id', 'cancelled_by', 'cancelled_at',
         'dispute_previous_status', 'dispute_reported_by', 'disputed_at',
         'dispute_summary',
     )
-    list_filter = ('status', 'payment_status', 'rental_status', 'payout_status')
-    search_fields = ('item__title', 'renter__username', 'dispute_reason')
+    list_filter = ('status', 'payment_status', 'rental_status', 'payout_status', 'cancelled_at')
+    search_fields = (
+        'item__title', 'renter__username', 'dispute_reason',
+        'cancellation_reason', 'stripe_refund_id',
+    )
     inlines = (ConditionPhotoInline,)
-    list_select_related = ('item', 'renter', 'dispute_reported_by')
+    list_select_related = ('item', 'renter', 'dispute_reported_by', 'cancelled_by')
 
     @admin.display(description='Dispute reason')
     def dispute_summary(self, obj):
@@ -58,3 +62,11 @@ class BookingAlertAdmin(admin.ModelAdmin):
     list_display = ('recipient', 'booking', 'kind', 'created_at', 'read_at')
     list_filter = ('kind', 'read_at')
     search_fields = ('recipient__username', 'booking__item__title', 'message')
+
+
+@admin.register(BookingReview)
+class BookingReviewAdmin(admin.ModelAdmin):
+    list_display = ('booking', 'reviewer', 'reviewee', 'rating', 'created_at')
+    list_filter = ('rating', 'created_at')
+    search_fields = ('booking__item__title', 'reviewer__username', 'reviewee__username', 'comment')
+    readonly_fields = ('booking', 'reviewer', 'reviewee', 'rating', 'comment', 'created_at')

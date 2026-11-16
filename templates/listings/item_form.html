@@ -7,8 +7,32 @@
     <h1>{{ heading|default:"List an Item" }}</h1>
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
+        {% if price_guidance %}<p id="price-guidance" class="muted" aria-live="polite">Suggested starting price is based on the average active listing in the selected category and adjusted for condition. You choose the final price.</p>{{ price_guidance|json_script:"price-guidance-data" }}{% endif %}
+        {% if suggested_price %}<p class="muted">Suggested starting price for this category and condition: <strong>${{ suggested_price }}/day</strong>. You choose the final price.</p>{% endif %}
         {{ form.as_p }}
         <button type="submit">{{ submit_label|default:"Create Listing" }}</button>
     </form>
 </div>
+{% if price_guidance %}
+<script>
+(() => {
+    const averages = JSON.parse(document.getElementById('price-guidance-data').textContent);
+    const category = document.getElementById('id_category');
+    const condition = document.getElementById('id_condition');
+    const price = document.getElementById('id_daily_price');
+    const output = document.getElementById('price-guidance');
+    const multipliers = {like_new: 1.1, good: 1, fair: 0.85};
+    function update() {
+        const average = averages[category.value];
+        if (!average) { output.textContent = 'No active listings in this category yet; choose a price that fits your gear.'; return; }
+        const suggested = (Number(average) * (multipliers[condition.value] || 1)).toFixed(2);
+        output.textContent = `Suggested starting price: $${suggested}/day. This is based on the category average and condition; you choose the final price.`;
+        if (!price.value) price.value = suggested;
+    }
+    category.addEventListener('change', update);
+    condition.addEventListener('change', update);
+    update();
+})();
+</script>
+{% endif %}
 {% endblock %}

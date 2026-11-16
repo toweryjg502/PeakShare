@@ -16,16 +16,6 @@
                 <a href="{% url 'item_list' %}">Browse</a>
                 {% if user.is_authenticated %}
                     <a href="{% url 'my_bookings' %}">My bookings</a>
-                    <a href="{% url 'booking_alert_list' %}">
-                        Alerts <span
-                            id="booking-alert-count"
-                            class="notification-count"
-                            data-count="{{ unread_booking_alert_count }}"
-                            data-latest-id="{{ latest_booking_alert_id }}"
-                            data-status-url="{% url 'booking_alert_status' %}"
-                            {% if not unread_booking_alert_count %}hidden{% endif %}
-                        >{{ unread_booking_alert_count }}</span>
-                    </a>
                     <a href="{% url 'item_create' %}">List an item</a>
                     <a href="{% url 'profile' %}">Profile</a>
                     <form method="post" action="{% url 'logout' %}">
@@ -41,23 +31,53 @@
         </div>
     </header>
 
-    <main class="container">
-        {% if user.is_authenticated %}
-            <div id="booking-alert-toast" class="booking-alert-toast" role="status" aria-live="polite" hidden>
-                <span id="booking-alert-toast-message"></span>
-                <a href="{% url 'booking_alert_list' %}">View alerts</a>
-                <button type="button" class="secondary" id="booking-alert-toast-close" aria-label="Dismiss alert">Dismiss</button>
-            </div>
-        {% endif %}
-        {% if messages %}
-            <div class="messages">
-                {% for message in messages %}
-                    <div class="message {{ message.tags }}">{{ message }}</div>
-                {% endfor %}
-            </div>
-        {% endif %}
+    <main class="container{% if user.is_authenticated %} has-alert-sidebar{% endif %}">
+        <div class="page-layout{% if user.is_authenticated %} with-alert-sidebar{% endif %}">
+            <section class="page-content">
+                {% if user.is_authenticated %}
+                    <div id="booking-alert-toast" class="booking-alert-toast" role="status" aria-live="polite" hidden>
+                        <span id="booking-alert-toast-message"></span>
+                        <button type="button" class="secondary" id="booking-alert-toast-close" aria-label="Dismiss alert">Dismiss</button>
+                    </div>
+                {% endif %}
+                {% if messages %}
+                    <div class="messages">
+                        {% for message in messages %}
+                            <div class="message {{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% block content %}{% endblock %}
+            </section>
 
-        {% block content %}{% endblock %}
+            {% if user.is_authenticated %}
+                <details class="booking-alert-sidebar" id="booking-alert-sidebar">
+                    <summary>
+                        <span>Booking alerts</span>
+                        <span id="booking-alert-count" class="notification-count"
+                            data-count="{{ unread_booking_alert_count }}"
+                            data-latest-id="{{ latest_booking_alert_id }}"
+                            data-status-url="{% url 'booking_alert_status' %}"
+                            {% if not unread_booking_alert_count %}hidden{% endif %}
+                        >{{ unread_booking_alert_count }}</span>
+                    </summary>
+                    <div class="booking-alert-sidebar-content">
+                        {% for alert in recent_booking_alerts %}
+                            <article class="sidebar-alert{% if not alert.read_at %} unread-alert{% endif %}">
+                                <p class="sidebar-alert-kind">{{ alert.get_kind_display }} · {{ alert.created_at|date:'M j, g:i A' }}</p>
+                                <p>{{ alert.message }}</p>
+                                <form method="post" action="{% url 'booking_alert_open' alert.pk %}">
+                                    {% csrf_token %}<button type="submit" class="secondary">Open booking</button>
+                                </form>
+                            </article>
+                        {% empty %}
+                            <p class="muted sidebar-empty">No booking alerts yet.</p>
+                        {% endfor %}
+                        <a class="sidebar-view-all" href="{% url 'booking_alert_list' %}">View alert history</a>
+                    </div>
+                </details>
+            {% endif %}
+        </div>
     </main>
     {% if user.is_authenticated %}
         <script src="{% static 'js/booking-alerts.js' %}" defer></script>
