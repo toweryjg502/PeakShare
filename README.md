@@ -1,3 +1,67 @@
+<div align="center">
+
+# 🏔️ PeakShare
+
+### Peer-to-peer outdoor gear rentals for the App State community
+
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Django](https://img.shields.io/badge/Django-092E20?style=for-the-badge&logo=django&logoColor=white)
+![Status](https://img.shields.io/badge/status-early%20development-orange?style=for-the-badge)
+
+[About](#about) · [Features](#features) · [Tech stack](#tech-stack) · [Get started](#get-started) · [Stripe testing](#test-stripe-checkout) · [Roadmap](#roadmap) · [Team](#team)
+
+</div>
+
+---
+
+> PeakShare is an early-development Information Systems senior project at Appalachian State University. The app is intended for App State students, faculty, and staff. It is not affiliated with or endorsed by Appalachian State University.
+
+## About
+
+Outdoor recreation in the Blue Ridge Mountains can be expensive, while useful gear often sits unused in closets and storage units. PeakShare is a campus-focused marketplace concept that helps community members rent outdoor equipment from one another.
+
+Lenders can list gear and set availability. Renters can browse listings, request dates, and pay through a Stripe test-mode checkout flow. The project is being developed as an MVP and is not ready for public, live-payment use.
+
+## Features
+
+- **Campus accounts:** registration restricted to `@appstate.edu` email addresses, with single-use verification links.
+- **Gear listings:** categories, descriptions, daily prices, condition, pickup instructions, and listing photos.
+- **Browse and search:** filter by keyword, category, condition, price range, and availability dates; sort by newest, price, or title.
+- **Booking and availability:** date requests, lender approval, blackout dates, and conflict checks.
+- **Stripe Connect test flow:** lender onboarding, card checkout, webhook payment updates, and lender transfers after both sides confirm return.
+- **Rental handoff records:** renter pickup photos and lender return photos are required before both sides can confirm each handoff.
+- **Dispute reporting:** participants can flag an issue; the transfer is held for admin review.
+- **Reviews:** renter and lender can review each other after a completed rental.
+- **Price guidance:** listing forms suggest a starting price using active listings in the category and the item condition. The lender sets the final price.
+- **Admin:** Django admin pages for listings, bookings, condition photos, alerts, reviews, and disputes.
+- **Rental terms acknowledgment:** booking requests record acceptance of the displayed rental terms. This is not a legal liability waiver.
+
+## Tech stack
+
+| Area | Technology |
+|---|---|
+| Application | Python, Django |
+| Local database | SQLite |
+| Hosted database option | PostgreSQL through `DATABASE_URL` (for example, Neon) |
+| Payments | Stripe Checkout and Connect |
+| Images | Django file storage and Pillow |
+| Configuration | Environment variables loaded from a local `.env` file |
+
+## Get started
+
+### Requirements
+
+- Python compatible with the pinned dependencies in `requirements.txt`
+- Git
+- A Stripe account and Stripe CLI only if you want to try checkout
+
+### Install and run
+
+```bash
+git clone https://github.com/toweryjg502/PeakShare.git
+cd PeakShare
+
+python3 -m venv venv
 source venv/bin/activate       # Windows: venv\Scripts\activate
 python -m pip install -r requirements.txt
 ```
