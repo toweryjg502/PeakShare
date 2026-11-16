@@ -1,166 +1,99 @@
-<div align="center">
+source venv/bin/activate       # Windows: venv\Scripts\activate
+python -m pip install -r requirements.txt
+```
 
-# 🏔️ PeakShare
-
-### Peer-to-peer outdoor gear rentals, built for the App State community
-
-![Status](https://img.shields.io/badge/status-early%20development-orange?style=for-the-badge)
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Django](https://img.shields.io/badge/Django-092E20?style=for-the-badge&logo=django&logoColor=white)
-
-[The Problem](#the-problem) · [Features](#features) · [Tech Stack](#tech-stack) · [Roadmap](#roadmap) · [Getting Started](#getting-started) · [Team](#team)
-
-</div>
-
----
-
-> [!NOTE]
-> PeakShare is in early development as our Information Systems senior project at Appalachian State University (Fall 2026). User accounts are working, and marketplace and payment features are being built next. See the [Roadmap](#roadmap) for current progress.
-
-## The Problem
-
-App State sits in the Blue Ridge Mountains, but outdoor recreation is expensive. A basic ski or snowboard rental at nearby Beech Mountain runs roughly **$50 to $65 per day**, and with lift tickets and other gear a single day can top **$150**. Many students skip the region's biggest draw because of cost.
-
-Meanwhile, plenty of students own quality gear that sits unused in dorm closets and storage units. Generic marketplaces like Facebook Marketplace and Craigslist don't verify users, don't manage return schedules, and offer no protection against damaged or stolen gear.
-
-## The Solution
-
-PeakShare is a closed-loop marketplace where verified App State students, faculty, and staff rent gear from each other at accessible daily rates (for example, **$15 to $20 per day**). Lenders earn money from idle equipment, and renters get affordable access to the outdoors.
-
-## Features
-
-| | Feature | Description | Status |
-|---|---|---|---|
-| 👤 | **User accounts** | Custom Django user model with registration, login, logout, and profile pages | ✅ Built |
-| 🔐 | **Campus verification** | Registration limited to `appstate.edu` emails, with single-use email verification links | 🔨 In progress |
-| 📦 | **Item listings** | Photos, daily pricing, categories, and pickup and drop-off instructions | 📋 Planned |
-| 🔎 | **Search and filters** | Browse by category, price range, and date availability | 📋 Planned |
-| 📅 | **Availability calendar** | Lenders set blackout dates, and renters request start and end dates | 📋 Planned |
-| 💳 | **Split payments** | Stripe Connect routes 90% to the lender and 10% to the platform, with deposit holds on high-value items | 📋 Planned |
-| 📸 | **Photo verification** | Timestamped photos at handoff and return to reduce damage disputes | 📋 Planned |
-| ⭐ | **Dual-sided reviews** | Renters and lenders rate each other from 1 to 5 stars | 📋 Planned |
-| 📝 | **Digital liability waiver** | Required before checkout | 📋 Planned |
-| 💲 | **Pricing suggestions** | Recommended rates based on retail value, condition, and category demand | 📋 Planned |
-| 🛠️ | **Admin portal** | Django admin for dispute review and listing oversight | 📋 Planned |
-
-## Tech Stack
-
-| Layer | Technology | Status |
-|---|---|---|
-| **Backend** | Python, Django | In use |
-| **Database** | SQLite for development, Neon (serverless PostgreSQL) for production | Neon planned |
-| **Payments** | Stripe Connect API | Planned |
-| **Authentication** | Django auth with a custom user model, plus SMTP email verification | Custom model built, email verification in progress |
-| **Hosting** | Free-tier services such as Render for the web app and Cloudinary for media | Planned |
-
-The project is designed to run on open-source frameworks and free-tier cloud services, keeping the pre-launch operating budget at **$0**.
-
-## Roadmap
-
-We are building a focused MVP first and adding secondary features only after the core works.
-
-**Done**
-- [x] Custom user model
-- [x] Registration, login, logout, and profile pages
-- [x] Registration restricted to `@appstate.edu` emails
-- [x] Automated tests for registration
-
-**MVP core (in progress)**
-- [x] Single-use email verification
-- [x] Connect Neon PostgreSQL
-- [x] Item listings by category
-- [x] Calendar-based booking
-- [ ] Stripe split payments and deposit holds
-
-**Next**
-- [ ] Pre- and post-rental photo verification
-- [ ] Digital liability waiver at checkout
-- [ ] Dual-sided review system
-- [ ] Dynamic pricing recommendations
-- [ ] Search and filtering
-- [ ] Admin dispute review
-
-**Out of scope for now:** real-time chat, native push notifications, and machine-learning-based pricing.
-
-### Launch Goals
-
-Targets for the first 45 days after deployment:
-
-| Metric | Target |
-|---|---|
-| Active listings | 50+ across at least 4 categories |
-| Completed transactions | 30 |
-| Successful rental rate | 95% without dispute escalation |
-
-To avoid an empty marketplace at launch, we plan to seed 30+ listings by partnering with App State outdoor clubs and student organizations.
-
-## Getting Started
+Create a fresh Django secret key:
 
 ```bash
-# Clone the repository
-git clone https://github.com/toweryjg502/PeakShare.git
-cd PeakShare
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
 
-# Create and activate a virtual environment
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+Create a `.env` file in the project root and add the generated value:
 
-# Install dependencies
-pip install -r requirements.txt
+```dotenv
+SECRET_KEY='paste-your-new-secret-key-here'
+DEBUG=True
+ALLOWED_HOSTS=127.0.0.1,localhost
+```
 
-# Set up the database (SQLite for now)
+Apply database migrations and start Django:
+
+```bash
 python manage.py migrate
-
-# Run the development server
 python manage.py runserver
 ```
 
-Then open `http://127.0.0.1:8000/accounts/register/` to create an account.
+Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) to browse, or [http://127.0.0.1:8000/accounts/register/](http://127.0.0.1:8000/accounts/register/) to create an account. In local development, verification email is printed in the Django terminal.
 
-Database, payment, and email settings are read from environment variables. **Never commit real keys or connection strings to the repository.**
+To create a Django admin account, run `python manage.py createsuperuser` and visit [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/).
 
-### Testing Stripe checkout locally
+The app uses a local SQLite database unless `DATABASE_URL` is set. A new local database does not include accounts or records from another computer. Keep `.env` and any database credentials private; `.env` is excluded from Git.
 
-Checkout is restricted to card payments in this first test-mode flow. The renter pays the full rental amount to PeakShare; the lender transfer is intentionally deferred until rental completion is implemented. Deposits are not included.
+## Test Stripe checkout
 
-1. In your local `.env`, set your Stripe **test** secret key (`STRIPE_SECRET_KEY`) and, optionally, publishable key (`STRIPE_PUBLISHABLE_KEY`). Keep `DEBUG=True` while developing and use only `sk_test_` / `pk_test_` keys.
-2. Install and sign in to the [Stripe CLI](https://docs.stripe.com/stripe-cli), then run:
+Stripe checkout is optional for running the site. Use test-mode credentials only while developing.
 
-   ```bash
-   stripe listen --forward-to 127.0.0.1:8000/bookings/stripe/webhook/
+1. Add your Stripe test keys to the project-root `.env`:
+
+   ```dotenv
+   STRIPE_SECRET_KEY=sk_test_...
+   STRIPE_PUBLISHABLE_KEY=pk_test_...
    ```
 
-3. Copy the `whsec_...` value printed by the CLI into `.env` as `STRIPE_WEBHOOK_SECRET`, then restart Django. Keep the CLI listener running while you use checkout.
-4. Create or use two verified accounts. The lender needs to complete Connect payout setup from their profile. Approve a booking as the lender, then sign in as the renter and choose **Pay now**.
-5. Use a Stripe test card, such as `4242 4242 4242 4242`, with any future expiry date and any three-digit CVC. Check the booking page after checkout; the webhook should change payment to **Paid** and rental progress to **Ready for pickup**.
+2. Install the [Stripe CLI](https://docs.stripe.com/stripe-cli) and authenticate:
 
-The webhook endpoint is `/bookings/stripe/webhook/`. It verifies Stripe's signature and ignores unrelated or stale checkout sessions. Do not expose this endpoint to live payments until refund, cancellation, transfer, and dispute handling are implemented.
+   ```bash
+   stripe login
+   ```
 
-<details>
-<summary><b>Known risks and mitigations</b></summary>
+3. Start a local webhook listener in a second terminal:
 
-<br>
+   ```bash
+   stripe listen --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired --forward-to 127.0.0.1:8000/bookings/stripe/webhook/
+   ```
 
-| Risk | Mitigation |
-|---|---|
-| Injury liability | Mandatory waiver at checkout, and platform terms stating PeakShare is a listing broker only |
-| Payment failures and disputes | Stripe Connect standard flows with webhook error handling, and authorization holds before handoff |
-| Scope creep | Strict MVP-first development |
-| Damaged, lost, or stolen gear | Timestamped photos, security deposit holds, and admin dispute review |
-| Empty marketplace at launch | Pre-launch seeding with campus outdoor clubs |
-| University SSO restrictions | Custom SMTP verification instead of Shibboleth/DUO integration |
+4. Copy the `whsec_...` value printed by the CLI into `.env` as `STRIPE_WEBHOOK_SECRET`, then restart Django.
+5. Use two verified accounts. The lender must finish Stripe Connect payout setup. The lender approves a booking; the renter selects **Pay now**.
+6. Use a Stripe test card such as `4242 4242 4242 4242`, with any future expiry and any three-digit CVC.
 
-</details>
+The current test flow charges the rental amount at checkout. After pickup and return are confirmed by both participants, the app attempts to transfer 90% of the rental amount to the lender's Stripe balance; the platform retains 10% before Stripe processing fees. The transfer is held if a participant flags a dispute. Test payouts and checkout do not mean the flow is ready for live payments.
+
+**Security deposits are not implemented.** The app also does not yet provide complete refund, cancellation, or dispute-resolution workflows. Do not use live payment keys or accept real payments until payment handling and the applicable marketplace terms have been reviewed and completed.
+
+## Roadmap
+
+### Built
+
+- Campus email-restricted registration and single-use verification
+- Listings, listing photos, and category browsing
+- Booking requests, availability calendars, and blackout dates
+- Search, filters, and sorting
+- Stripe test checkout, Connect onboarding, webhook payment updates, and delayed lender transfer
+- Pickup and return photo records with two-party confirmation
+- Dispute flagging and admin review
+- Dual-sided reviews and category-based price suggestions
+
+### Remaining before a public launch
+
+- Decide whether to require security deposits, which listings need them, and how holds or refunds will work
+- Prepare and review a proper liability waiver and marketplace terms; the current acknowledgment is basic rental guidance only
+- Complete payment cancellation, refund, failed-transfer, and dispute-resolution processes
+- Configure production email, media storage, hosting, domain, and deployment security settings
+- Seed listings and test the full renter/lender journey with the campus community
+
+### Out of scope for the current MVP
+
+Real-time chat, native push notifications, and machine-learning-based pricing.
 
 ## Team
 
 | Name | Role |
 |---|---|
-| **Jared Towery** | Project Manager |
-| **Max Phillips** | Developer |
+| Jared Towery | Project Manager |
+| Max Phillips | Developer |
 
-Appalachian State University, Walker College of Business
+Appalachian State University · Walker College of Business · Fall 2026
 
 ---
 
-<sub>PeakShare is a student project and is not officially affiliated with or endorsed by Appalachian State University. Terms of service and liability waiver language will be reviewed with legal counsel before any public release.</sub>
+<sub>PeakShare is a student project and is not officially affiliated with or endorsed by Appalachian State University. Listing, rental, payment, and liability terms require review before public launch.</sub>
